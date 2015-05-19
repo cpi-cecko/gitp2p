@@ -1,3 +1,4 @@
+# perl specific files
 /blib/
 /.build/
 _build/
@@ -18,3 +19,7 @@ nytprof.out
 *.o
 *.bs
 /_eumm/
+
+# gitp2p specific files
+peers
+gitp2p-config
