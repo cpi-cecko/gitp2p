@@ -65,6 +65,9 @@ func repo_upload(Object $opt_name is ro, Str $dummy is ro) {
     # TODO: Combine relays with ports!
     my $s = IO::Socket::INET->new(PeerAddr => $relays[0],
                                   PeerPort => $ports[0],
+                                  LocalPort => 47778,
+                                  ReuseAddr => SO_REUSEADDR,
+                                  ReusePort => SO_REUSEPORT,
                                   Proto => 'tcp')
                               or die "Cannot create connection to relay";
 
@@ -72,10 +75,10 @@ func repo_upload(Object $opt_name is ro, Str $dummy is ro) {
     say "[INFO] Packet $packet";
     $s->send($packet);
 
-    my $resp;
-    $s->recv($resp, 4);
+    my $resp = <$s>;
 
     say "[INFO] Response: $resp";
+    close $s;
 }
 
 
