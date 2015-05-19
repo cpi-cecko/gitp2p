@@ -8,6 +8,7 @@ use Getopt::Long;
 use Pod::Usage;
 use Method::Signatures;
 use Path::Tiny;
+use IO::Socket::INET;
 
 
 my $man = 0;
@@ -26,7 +27,7 @@ pod2usage(-exitval => 0, -verbose => 2) if $man;
 
 
 func repo_init(Object $opt_name is ro, Str $repo_dir is ro) {
-    # TODO: Check if there's a valid repo at $repo_dirdir
+    # TODO: Check if there's a valid repo at $repo_dir
     my $working_dir = path($repo_dir)->absolute;
     if (length($working_dir) == 0) {
         $working_dir = Path::Tiny->cwd;
@@ -47,8 +48,28 @@ func repo_init(Object $opt_name is ro, Str $repo_dir is ro) {
         if $? == -1;
 }
 
-func repo_upload(Object $opt_name is ro) {
-    ...;
+# Fetches the list of available relays and uploads sends its address
+# there.
+func repo_upload(Object $opt_name is ro, Str $dummy is ro) {
+    my @config = path("./gitp2p-config")->lines;
+    my ($relay_list) = grep { /relays=/ } @config;
+    my ($port_list) = grep { /ports=/ } @config;
+    my @relays = split /,/, (split /=/, $relay_list)[1];
+    my @ports = split /,/, (split /=/, $port_list)[1];
+
+    my $repo_name = path(path("./")->absolute)->basename;
+    my $user_id = `git config --get user.email`;
+    chomp $user_id;
+
+
+    # TODO: Combine relays with ports!
+    my $s = IO::Socket::INET->new(PeerAddr => $relays[0],
+                                  PeerPort => $ports[0],
+                                  Proto => 'tcp')
+                              or die "Cannot create connection to relay";
+
+    my $packet = $repo_name . ":" . $user_id;
+    $s->send($packet);
 }
 
 
@@ -70,6 +91,7 @@ gitp2p [--help, --man, --init [repo-dir], --upload, --push, --fetch]
    -upload      upload an initted bare repo to the p2p swarm
    -push        push changes to the swarm
    -fetch       fetch changes from the swarm
+   -list        lists available gitp2p repos
 
 =head1 OPTIONS
 
@@ -102,6 +124,10 @@ Pushes your changes to the gitp2p swarm.
 =item B<-fetch>
 
 Fetches the latest repo changes from the gitp2p swarm.
+
+=item B<-list>
+
+Lists available gitp2p repositories.
 
 =back
 
