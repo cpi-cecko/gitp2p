@@ -18,7 +18,8 @@ GetOptions('help|?' => \$help,
            'init=s' => \&repo_init,
            upload   => \&repo_upload,
            push     => \&repo_push_to_swarm,
-           fetch    => \&repo_fetch_from_swarm
+           fetch    => \&repo_fetch_from_swarm,
+           list     => \&repo_list,
        ) or pod2usage(2);
 pod2usage(1) if $help;
 pod2usage(-exitval => 0, -verbose => 2) if $man;
