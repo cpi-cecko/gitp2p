@@ -6,20 +6,49 @@ use v5.20;
 
 use Getopt::Long;
 use Pod::Usage;
+use Method::Signatures;
+use Path::Tiny;
 
 
 my $man = 0;
 my $help = 0;
 
 GetOptions('help|?' => \$help, 
-           man      => \$man
-           # init     => \&repo_init,
-           # upload   => \&repo_upload,
-           # push     => \&repo_push_to_swarm,
-           # fetch    => \&repo_fetch_from_swarm
+           man      => \$man,
+           'init=s' => \&repo_init,
+           upload   => \&repo_upload,
+           push     => \&repo_push_to_swarm,
+           fetch    => \&repo_fetch_from_swarm
        ) or pod2usage(2);
 pod2usage(1) if $help;
 pod2usage(-exitval => 0, -verbose => 2) if $man;
+
+
+func repo_init(Object $opt_name is ro, Str $repo_dir is ro) {
+    # TODO: Check if there's a valid repo at $repo_dirdir
+    my $working_dir = path($repo_dir)->absolute;
+    if (length($working_dir) == 0) {
+        $working_dir = Path::Tiny->cwd;
+    }
+
+    say "[INFO] Working in $working_dir";
+
+    my $repo_name = path($working_dir)->basename;
+    my $bare_repo_path = "$working_dir/../$repo_name.git";
+    say "[INFO] Bare repo path $bare_repo_path";
+    
+    system("cp", "-rf", "$working_dir/.git", $bare_repo_path);
+    die ("couldn't copy repo")
+        if $? == -1;
+
+    system("git", "config", "--bool", "core.bare", "true");
+    system("rm", "-rf", $bare_repo_path)
+        if $? == -1;
+}
+
+func repo_upload(Object $opt_name is ro) {
+    ...;
+}
 
 
 __END__
