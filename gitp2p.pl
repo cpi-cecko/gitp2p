@@ -69,7 +69,13 @@ func repo_upload(Object $opt_name is ro, Str $dummy is ro) {
                               or die "Cannot create connection to relay";
 
     my $packet = $repo_name . ":" . $user_id;
+    say "[INFO] Packet $packet";
     $s->send($packet);
+
+    my $resp;
+    $s->recv($resp, 4);
+
+    say "[INFO] Response: $resp";
 }
 
 
