@@ -60,7 +60,8 @@ $loop->listen(
                     $self->write($peers_list . "\n");
                 }
                 else {
-                    # Send NACK!
+                    my $cmd = $msg->op_name;
+                    $self->write("NACK: Invalid command - '$cmd'\n");
                 }
 
                 $$buffref = "";
