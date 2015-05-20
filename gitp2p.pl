@@ -1,5 +1,6 @@
 #!/usr/bin/perl
 
+
 use strict;
 use warnings;
 use v5.20;
@@ -14,6 +15,7 @@ use Path::Tiny;
 use IO::Socket::INET;
 
 use GitP2P::Proto::Relay;
+use GitP2P::Core::Finder;
 
 
 my $man = 0;
@@ -56,20 +58,13 @@ func repo_init(Object $opt_name is ro, Str $repo_dir is ro) {
 # Fetches the list of available relays and uploads sends its address
 # there.
 func repo_upload(Object $opt_name is ro, Str $dummy is ro) {
-    my @config = path("./gitp2p-config")->lines;
-    my ($relay_list) = grep { /relays=/ } @config;
-    my ($port_list) = grep { /ports=/ } @config;
-    my @relays = split /,/, (split /=/, $relay_list)[1];
-    my @ports = split /,/, (split /=/, $port_list)[1];
-
     my $repo_name = path(path("./")->absolute)->basename;
     my $user_id = `git config --get user.email`;
     chomp $user_id;
 
-
+    my $relay = GitP2P::Core::Finder::get_relay("gitp2p-config");
     # TODO: Combine relays with ports!
-    my $s = IO::Socket::INET->new(PeerAddr => $relays[0],
-                                  PeerPort => $ports[0],
+    my $s = IO::Socket::INET->new(PeerAddr => $relay,
                                   LocalPort => 47778,
                                   ReuseAddr => SO_REUSEADDR,
                                   ReusePort => SO_REUSEPORT,

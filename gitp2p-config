@@ -1,2 +1,1 @@
-relays=localhost,gitp2p.fmi.uni-sofia.bg
-ports=12345
+relays=localhost:12345,gitp2p.fmi.uni-sofia.bg:12345
