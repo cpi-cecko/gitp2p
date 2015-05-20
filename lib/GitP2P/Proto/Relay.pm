@@ -22,5 +22,6 @@ func build(Str $op_name is ro, ArrayRef[Str] $op_data is ro) {
 
 
 no Moose;
+__PACKAGE__->meta->make_immutable;
 
 1;
