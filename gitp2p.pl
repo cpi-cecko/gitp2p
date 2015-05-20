@@ -77,6 +77,23 @@ func repo_upload(Object $opt_name is ro, Str $dummy is ro) {
     close $s;
 }
 
+# Lists available repos
+func repo_list(Object $opt_name is ro, Str $dummy is ro) {
+    my $relay = GitP2P::Core::Finder::get_relay("gitp2p-config");
+    my $s = GitP2P::Core::Finder::establish_connection($relay, 47778);
+
+    my $msg = GitP2P::Proto::Relay::build("list", [""]);
+
+    say "[INFO] Message '$msg'";
+    $s->send($msg);
+
+    my $resp = <$s>;
+    chomp $resp;
+
+    say "Available repos: \n  " . join "\n  ", split /, /, $resp;
+    close $s;
+}
+
 
 __END__
 

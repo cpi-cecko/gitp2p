@@ -17,6 +17,7 @@ use GitP2P::Proto::Relay;
 
 my $loop = IO::Async::Loop->new;
 
+# TODO: Query other relays if no info here
 $loop->listen(
     service => "12345",
     socktype => 'stream',
@@ -53,6 +54,10 @@ $loop->listen(
                 elsif ($msg->op_name =~ /fetch/) {
                 }
                 elsif ($msg->op_name =~ /list/) {
+                    my @peers = path("peers")->lines;
+                    chomp(@peers);
+                    my $peers_list = join ", ", @peers;
+                    $self->write($peers_list . "\n");
                 }
                 else {
                     # Send NACK!
