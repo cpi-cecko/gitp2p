@@ -4,11 +4,16 @@ use strict;
 use warnings;
 use v5.20;
 
+use FindBin;
+use lib "$FindBin::Bin/lib";
+
 use Getopt::Long;
 use Pod::Usage;
 use Method::Signatures;
 use Path::Tiny;
 use IO::Socket::INET;
+
+use GitP2P::Proto::Relay;
 
 
 my $man = 0;
@@ -71,11 +76,13 @@ func repo_upload(Object $opt_name is ro, Str $dummy is ro) {
                                   Proto => 'tcp')
                               or die "Cannot create connection to relay";
 
-    my $packet = $repo_name . ":" . $user_id;
-    say "[INFO] Packet $packet";
-    $s->send($packet);
+    my $msg = GitP2P::Proto::Relay::build("upload", [$repo_name, $user_id]);
+
+    say "[INFO] Message '$msg'";
+    $s->send($msg);
 
     my $resp = <$s>;
+    chomp $resp;
 
     say "[INFO] Response: $resp";
     close $s;

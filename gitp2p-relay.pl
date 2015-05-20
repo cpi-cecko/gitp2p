@@ -4,10 +4,15 @@ use strict;
 use warnings;
 use v5.20;
 
+use FindBin;
+use lib "$FindBin::Bin/lib";
+
 use Path::Tiny;
 use Method::Signatures;
 use IO::Async::Stream;
 use IO::Async::Loop;
+
+use GitP2P::Proto::Relay;
 
 
 my $loop = IO::Async::Loop->new;
@@ -24,11 +29,11 @@ $loop->listen(
                 my ($self, $buffref, $eof) = @_;
                 return 0 if $eof;
 
-                my ($op_name, $op_data) = split / /, $$buffref;
-                print "op: '$op_name', data: '$op_data'\n";
+                my $msg = GitP2P::Proto::Relay->new;
+                $msg->parse($$buffref);
 
-                if ($op_name =~ /upload/) {
-                    if ($op_data =~ /^(.*:.*)/) {
+                if ($msg->op_name =~ /upload/) {
+                    if ($msg->op_data =~ /^(.*:.*)/) {
                         my $addr = $self->read_handle->peerhost;
                         my $port = $self->read_handle->peerport;
                         my $peer_entry = $1 . ' ^ ' . $addr . ':' . $port . "\n";
@@ -43,11 +48,11 @@ $loop->listen(
                         }
                     }
                 } 
-                elsif ($op_name =~ /push/) {
+                elsif ($msg->op_name =~ /push/) {
                 }
-                elsif ($op_name =~ /fetch/) {
+                elsif ($msg->op_name =~ /fetch/) {
                 }
-                elsif ($op_name =~ /list/) {
+                elsif ($msg->op_name =~ /list/) {
                 }
                 else {
                     # Send NACK!
