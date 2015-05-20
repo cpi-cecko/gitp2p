@@ -63,13 +63,7 @@ func repo_upload(Object $opt_name is ro, Str $dummy is ro) {
     chomp $user_id;
 
     my $relay = GitP2P::Core::Finder::get_relay("gitp2p-config");
-    # TODO: Combine relays with ports!
-    my $s = IO::Socket::INET->new(PeerAddr => $relay,
-                                  LocalPort => 47778,
-                                  ReuseAddr => SO_REUSEADDR,
-                                  ReusePort => SO_REUSEPORT,
-                                  Proto => 'tcp')
-                              or die "Cannot create connection to relay";
+    my $s = GitP2P::Core::Finder::establish_connection($relay, 47778);
 
     my $msg = GitP2P::Proto::Relay::build("upload", [$repo_name, $user_id]);
 
