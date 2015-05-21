@@ -33,7 +33,7 @@ pod2usage(1) if $help;
 pod2usage(-exitval => 0, -verbose => 2) if $man;
 
 
-func repo_init(Object $opt_name is ro, Str $repo_dir is ro) {
+func repo_init(Object $opt_name, Str $repo_dir) {
     # TODO: Check if there's a valid repo at $repo_dir
     my $working_dir = path($repo_dir)->absolute;
     if (length($working_dir) == 0) {
@@ -57,7 +57,7 @@ func repo_init(Object $opt_name is ro, Str $repo_dir is ro) {
 
 # Fetches the list of available relays and uploads sends its address
 # there.
-func repo_upload(Object $opt_name is ro, Str $dummy is ro) {
+func repo_upload(Object $opt_name, Str $dummy) {
     my $repo_name = path(path("./")->absolute)->basename;
     my $user_id = `git config --get user.email`;
     chomp $user_id;
@@ -77,8 +77,12 @@ func repo_upload(Object $opt_name is ro, Str $dummy is ro) {
     close $s;
 }
 
+# Pushes the repo across the swarm of subscribers
+func repo_push(Object $opt_name, Str $dummy) {
+}
+
 # Lists available repos
-func repo_list(Object $opt_name is ro, Str $dummy is ro) {
+func repo_list(Object $opt_name, Str $dummy) {
     my $relay = GitP2P::Core::Finder::get_relay("gitp2p-config");
     my $s = GitP2P::Core::Finder::establish_connection($relay, 47778);
 
