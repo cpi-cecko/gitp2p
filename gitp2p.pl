@@ -23,14 +23,15 @@ my $man = 0;
 my $help = 0;
 my $cfg = undef; # Currently, the config only contains the port number
 
-GetOptions('help|?' => \$help, 
-           man      => \$man,
-           'cfg=s'  => \$cfg,
-           'init=s' => \&repo_init,
-           upload   => \&repo_upload,
-           push     => \&repo_push,
-           fetch    => \&repo_fetch,
-           list     => \&repo_list,
+GetOptions('help|?'  => \$help, 
+           man       => \$man,
+           'cfg=s'   => \$cfg,
+           'init=s'  => \&repo_init,
+           upload    => \&repo_upload,
+           push      => \&repo_push,
+           fetch     => \&repo_fetch,
+           'clone=s' => \&repo_clone,
+           list      => \&repo_list,
        ) or pod2usage(2);
 pod2usage(1) if $help;
 pod2usage(-exitval => 0, -verbose => 2) if $man;
@@ -128,7 +129,28 @@ func repo_push(Object $opt_name, Str $dummy) {
                 # $pS->send($msg);
             }
         }
+        # close $pS;
     }
+
+    close $s;
+}
+
+# Clones a repo by a given name and user id
+func repo_clone(Object $opt_name, Str $opt_params) {
+    my $relay = GitP2P::Core::Finder::get_relay("gitp2p-config");
+    my $s = GitP2P::Core::Finder::establish_connection($relay, $cfg);
+
+    my ($user_id, $repo_name) = split ':', $opt_params;
+    my $msg = GitP2P::Proto::Relay::Build("clone", [$user_id, $repo_name]);
+
+    say "[INFO] Message '$msg'";
+    $s->send($msg);
+    
+    my $resp = <$s>;
+    chomp $resp;
+
+    say "[INFO] Response '$resp'";
+    close $s;
 }
 
 # Lists available repos
@@ -157,16 +179,20 @@ gitp2p - A peer-to-peer git hosting service.
 
 =head1 SYNOPSIS
 
-gitp2p [--help, --man, --init [repo-dir], --upload, --push, --fetch]
+gitp2p [--help, --man, --cfg config-file, --init [repo-dir], --upload, --push,
+        --fetch, --clone user_id:repo_name, --list]
 
  Options:
    -help        brief help message
    -man         full documentation
 
+   -cfg         specify config file for overriding default options
+
    -init        init a bare git repo from the repo at [repo-dir]
    -upload      upload an initted bare repo to the p2p swarm
    -push        push changes to the swarm
    -fetch       fetch changes from the swarm
+   -clone       clone repo from the swarm
    -list        lists available gitp2p repos
 
 =head1 OPTIONS
@@ -180,6 +206,10 @@ Prints a brief help message and exits.
 =item B<-man>
 
 Prints the manual page and exits.
+
+=item B<-cfg>
+
+Override defaults from a config file.
 
 =item B<-init>
 
@@ -200,6 +230,10 @@ Pushes your changes to the gitp2p swarm.
 =item B<-fetch>
 
 Fetches the latest repo changes from the gitp2p swarm.
+
+=item B<-clone>
+
+Clones a given repo.
 
 =item B<-list>
 
