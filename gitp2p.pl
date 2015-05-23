@@ -54,7 +54,7 @@ func repo_init(Object $opt_name, Str $repo_dir) {
     die ("couldn't copy repo")
         if $? == -1;
 
-    system("git", "config", "--bool", "core.bare", "true");
+    system("git", "config", "--local", "--bool", "core.bare", "true");
     system("rm", "-rf", $bare_repo_path)
         if $? == -1;
 }
@@ -86,7 +86,8 @@ func repo_push(Object $opt_name, Str $dummy) {
     my $relay = GitP2P::Core::Finder::get_relay("gitp2p-config");
     my $s = GitP2P::Core::Finder::establish_connection($relay, $cfg);
 
-    my $user_id = `git config --get user.email`;
+    # TODO: Read the local or the global git config?
+    my $user_id = `git config --local --get user.email`;
     chomp $user_id;
     my $repo_name = path(path("./")->absolute)->basename;
 
