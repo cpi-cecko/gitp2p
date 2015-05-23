@@ -50,6 +50,27 @@ $loop->listen(
                     }
                 } 
                 elsif ($msg->op_name =~ /push/) {
+                    if ($msg->op_data =~ /^(.*):(.*)/) {
+                        my ($repo_name, $user_id) = ($1, $2);
+                        print "Searching repo '$repo_name' for '$user_id'\n";
+
+                        my $peers = path("peers");
+                        if ($peers->exists) {
+                            # TODO: Support IPv6
+                            my @peers_addr;
+                            for ($peers->lines) {
+                                if ($_ =~ /\Q$repo_name\E:(?:[^\s]+) \^ (.*)\n$/) {
+                                    print "Sending to '$1'\n";
+                                    push @peers_addr, $1;
+                                }
+                            }
+                            $self->write((join ',', @peers_addr) . "\n");
+                        }
+                        else {
+                            print "No peers!\n";
+                            $self->write("NACK: no peers\n");
+                        }
+                    }
                 }
                 elsif ($msg->op_name =~ /fetch/) {
                 }

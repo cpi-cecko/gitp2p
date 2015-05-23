@@ -80,67 +80,53 @@ func repo_upload(Object $opt_name, Str $dummy) {
 
 # Pushes the repo across the swarm of subscribers
 func repo_push(Object $opt_name, Str $dummy) {
-    my $user_id = `git config --get user.email`;
+    my $relay = GitP2P::Core::Finder::get_relay("gitp2p-config");
+    my $s = GitP2P::Core::Finder::establish_connection($relay, 47778);
 
-    my $packDir = path(".git/objects/pack");
-    for my $packFile ($packDir->children) {
-        if ($packFile =~ /\.idx$/) {
-            my $contents = path($packFile)->slurp_raw;
-            my $msg = GitP2P::Proto::Daemon::build("recv",
-                {'user_id' => $user_id, 
-                 'type' => "idx",
-                 'cnts' => $contents});
-            say "idx: $msg";
-        }
-        elsif ($packFile =~ /\.pack$/) {
-            my $contents = path($packFile)->slurp_raw;
-            my $msg = GitP2P::Proto::Daemon::build("recv", 
-                {'user_id' => $user_id, 
-                 'type' => "pack",
-                 'cnts' => $contents});
-            say "pack: $msg";
-        }
+    my $user_id = `git config --get user.email`;
+    chomp $user_id;
+    my $repo_name = path(path("./")->absolute)->basename;
+
+    my $msg = GitP2P::Proto::Relay::build("push", [$repo_name, $user_id]);
+
+    say "[INFO] Message '$msg'";
+    $s->send($msg);
+
+    # expected: comma-sepd ip:port of peers
+    my $resp = <$s>;
+    chomp $resp;
+    if (grep { /NACK:/ } $resp) {
+        say "[INFO] No peers";
+        return;
     }
 
-    # my $user_id = `git config --get user.email`;
-
-    # my $relay = GitP2P::Core::Finder::get_relay("gitp2p-config");
-    # my $s = GitP2P::Core::Finder::establish_connection($relay, 47778);
-
-    # my $msg = GitP2P::Proto::Relay::build("push", [$repo_name, $user_id]);
-
-    # say "[INFO] Message '$msg'";
-    # $s->send($msg);
-
-    # # expected: comma-sepd ip:port of peers
-    # my $resp = <$s>;
-    # chomp $resp;
-
-    # my @peers_addr = split /,/, $resp;
+    my @peers_addr = split /,/, $resp;
 
     # system ("git", "gc");
-    # for my $peer (@peers_addr) {
-    #     my $pS = GitP2P::Core::Finder::establish_connection($peer, 47778);
-    #     my $packDir = path(".git/objects/pack");
-    #     for my $packFile ($packDir->children) {
-    #         if ($packFile =~ /\.idx$/) {
-    #             my $contents = path($packFile)->slurp_raw;
-    #             my $msg = GitP2P::Proto::Daemon::build("recv",
-    #                 ['user_id' => $user_id, 
-    #                  'type' => "idx",
-    #                  'cnts' => $contents]);
-    #             $pS->send($msg);
-    #         }
-    #         elsif ($packFile =~ /\.pack$/) {
-    #             my $contents = path($packFile)->slurp_raw;
-    #             my $msg = GitP2P::Proto::Daemon::build("recv", 
-    #                 ['user_id' => $user_id, 
-    #                  'type' => "pack",
-    #                  'cnts' => $contents]);
-    #             $pS->send($msg);
-    #         }
-    #     }
-    # }
+    for my $peer (@peers_addr) {
+        # my $pS = GitP2P::Core::Finder::establish_connection($peer, 47778);
+        my $packDir = path(".git/objects/pack");
+        for my $packFile ($packDir->children) {
+            if ($packFile =~ /\.idx$/) {
+                my $contents = path($packFile)->slurp_raw;
+                my $msg = GitP2P::Proto::Daemon::build("recv",
+                    {'user_id' => $user_id, 
+                     'type' => "idx",
+                     'cnts' => $contents});
+                say "Sending index of " . (length $msg) . " bytes to $peer";
+                # $pS->send($msg);
+            }
+            elsif ($packFile =~ /\.pack$/) {
+                my $contents = path($packFile)->slurp_raw;
+                my $msg = GitP2P::Proto::Daemon::build("recv", 
+                    {'user_id' => $user_id, 
+                     'type' => "pack",
+                     'cnts' => $contents});
+                say "Sending pack of " . (length $msg) . " bytes to $peer";
+                # $pS->send($msg);
+            }
+        }
+    }
 }
 
 # Lists available repos
