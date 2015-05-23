@@ -16,7 +16,9 @@ func get_relay(Str $config_file_name is ro) {
     return $relays[0];
 }
 
-func establish_connection(Str $address, Int $local_port) {
+func establish_connection(Str $address, Int $cfg) {
+    my $local_port = 47778;
+    $local_port = int ((path($cfg)->lines({chomp=>1}))[0]) if defined $cfg;
     my $s = IO::Socket::INET->new(PeerAddr => $address,
                                   LocalPort => $local_port,
                                   ReuseAddr => SO_REUSEADDR,

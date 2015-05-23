@@ -21,9 +21,11 @@ use GitP2P::Core::Finder;
 
 my $man = 0;
 my $help = 0;
+my $cfg = undef; # Currently, the config only contains the port number
 
 GetOptions('help|?' => \$help, 
            man      => \$man,
+           'cfg=s'  => \$cfg,
            'init=s' => \&repo_init,
            upload   => \&repo_upload,
            push     => \&repo_push,
@@ -64,7 +66,7 @@ func repo_upload(Object $opt_name, Str $dummy) {
     chomp $user_id;
 
     my $relay = GitP2P::Core::Finder::get_relay("gitp2p-config");
-    my $s = GitP2P::Core::Finder::establish_connection($relay, 47778);
+    my $s = GitP2P::Core::Finder::establish_connection($relay, $cfg);
 
     my $msg = GitP2P::Proto::Relay::build("upload", [$repo_name, $user_id]);
 
@@ -81,7 +83,7 @@ func repo_upload(Object $opt_name, Str $dummy) {
 # Pushes the repo across the swarm of subscribers
 func repo_push(Object $opt_name, Str $dummy) {
     my $relay = GitP2P::Core::Finder::get_relay("gitp2p-config");
-    my $s = GitP2P::Core::Finder::establish_connection($relay, 47778);
+    my $s = GitP2P::Core::Finder::establish_connection($relay, $cfg);
 
     my $user_id = `git config --get user.email`;
     chomp $user_id;
@@ -132,7 +134,7 @@ func repo_push(Object $opt_name, Str $dummy) {
 # Lists available repos
 func repo_list(Object $opt_name, Str $dummy) {
     my $relay = GitP2P::Core::Finder::get_relay("gitp2p-config");
-    my $s = GitP2P::Core::Finder::establish_connection($relay, 47778);
+    my $s = GitP2P::Core::Finder::establish_connection($relay, $cfg);
 
     my $msg = GitP2P::Proto::Relay::build("list", [""]);
 
