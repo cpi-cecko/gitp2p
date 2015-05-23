@@ -54,7 +54,7 @@ func repo_init(Object $opt_name, Str $repo_dir) {
     die ("couldn't copy repo")
         if $? == -1;
 
-    system("git", "config", "--local", "--bool", "core.bare", "true");
+    system("git", "config", "--file", "$bare_repo_path/config", "--bool", "core.bare", "true");
     system("rm", "-rf", $bare_repo_path)
         if $? == -1;
 }
