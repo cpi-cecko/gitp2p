@@ -37,8 +37,16 @@ pod2usage(1) if $help;
 pod2usage(-exitval => 0, -verbose => 2) if $man;
 
 
-func repo_init(Object $opt_name, Str $repo_dir) {
+# Accepts a repo_dir and user_id
+# TODO: Try to deduce repo_dir and user_id if not present
+# TODO: The user.email is not a user id!!!
+func repo_init(Object $opt_name, Str $init_params) {
     # TODO: Check if there's a valid repo at $repo_dir
+    my ($repo_dir, $owner_id) = split /:/, $init_params;
+    # TODO: User pod2usage
+    die ("gitp2p --init <repo_dir>:<owner_id>")
+        if not $owner_id;
+
     my $working_dir = path($repo_dir)->absolute;
     if (length($working_dir) == 0) {
         $working_dir = Path::Tiny->cwd;
@@ -57,6 +65,7 @@ func repo_init(Object $opt_name, Str $repo_dir) {
     system("git", "config", "--file", "$bare_repo_path/config", "--bool", "core.bare", "true");
     system("rm", "-rf", $bare_repo_path)
         if $? == -1;
+    system("git", "config", "--file", "$bare_repo_path/config", "user.email", "$owner_id");
 }
 
 # Fetches the list of available relays and uploads sends its address
