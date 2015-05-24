@@ -27,7 +27,7 @@ func on_upload(Object $sender, Str $op_data) {
         my $addr = $sender->read_handle->peerhost;
         my $port = $sender->read_handle->peerport;
         my $peer_entry = $1 . ' ^ ' . $addr . ':' . $port . "\n";
-        print "Received entry: $peer_entry";
+        print "[INFO] Received entry: $peer_entry";
 
         my $peers = path("peers");
         if ($peers->exists && grep { /\Q$peer_entry\E/ } $peers->lines) {
@@ -42,7 +42,7 @@ func on_upload(Object $sender, Str $op_data) {
 func on_push(Object $sender, Str $op_data) {
     if ($op_data =~ /^(.*):(.*)/) {
         my ($repo_name, $user_id) = ($1, $2);
-        print "Searching repo '$repo_name' for '$user_id'\n";
+        print "[INFO] Searching repo '$repo_name' for '$user_id'\n";
 
         my $peers = path("peers");
         if ($peers->exists) {
@@ -50,14 +50,14 @@ func on_push(Object $sender, Str $op_data) {
             my @peers_addr;
             for ($peers->lines) {
                 if ($_ =~ /\Q$repo_name\E:(?:[^\s]+) \^ (.*)\n$/) {
-                    print "Sending to '$1'\n";
+                    print "[INFO] Sending to '$1'\n";
                     push @peers_addr, $1;
                 }
             }
             $sender->write((join ',', @peers_addr) . "\n");
         }
         else {
-            print "No peers!\n";
+            print "[INFO] No peers!\n";
             $sender->write("NACK: no peers\n");
         }
     }
@@ -95,8 +95,10 @@ $loop->listen(
 
                 if (not exists $operations{$msg->op_name}) {
                     my $cmd = $msg->op_name;
+                    print "[INFO] Invalid command: " . $msg->op_name . "\n";
                     $sender->write("NACK: Invalid command - '$cmd'\n");
                 } else {
+                    print "[INFO] Exec command: " . $msg->op_name . "\n";
                     $operations{$msg->op_name}->($sender, $msg->op_data);
                 } 
 
