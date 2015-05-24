@@ -142,7 +142,7 @@ func repo_clone(Object $opt_name, Str $opt_params) {
     my $s = GitP2P::Core::Finder::establish_connection($relay, $cfg);
 
     my ($user_id, $repo_name) = split ':', $opt_params;
-    my $msg = GitP2P::Proto::Relay::Build("clone", [$user_id, $repo_name]);
+    my $msg = GitP2P::Proto::Relay::build("clone", [$user_id, $repo_name]);
 
     say "[INFO] Message '$msg'";
     $s->send($msg);
