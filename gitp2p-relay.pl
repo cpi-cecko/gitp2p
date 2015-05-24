@@ -18,6 +18,7 @@ use GitP2P::Proto::Relay;
 my %operations = ( "upload" => \&on_upload
                  , "push"   => \&on_push
                  , "fetch"  => \&on_fetch
+                 , "clone"  => \&on_clone
                  , "list"   => \&on_list
                  );
 
@@ -65,6 +66,28 @@ func on_push(Object $sender, Str $op_data) {
 
 func on_fetch(Object $sender, Str $op_data) {
     $sender->write("NACK: not implemented\n");
+}
+
+func on_clone(Object $sender, Str $op_data) {
+    if ($op_data =~ /^(.*):(.*)/) {
+        my ($repo_name, $owner_id) = ($1, $2);
+
+        my $peers = path("peers");
+        if ($peers->exists) {
+            my @peers_addr;
+            for ($peers->lines) {
+                if ($_ =~ /\Q$repo_name\E:\Q$owner_id\E(?::[^\s]+)? \^ (.*)\n$/) {
+                    push @peers_addr, $1;
+                }
+            }
+            print "[INFO] Sending " . (join ',', @peers_addr) . "\n";
+            $sender->write((join ',', @peers_addr) . "\n");
+        }
+        else {
+            print "[INFO] No peers\n";
+            $sender->write("NACK: no peers\n");
+        }
+    }
 }
 
 func on_list(Object $sender, Str $op_data) {

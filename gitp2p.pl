@@ -152,15 +152,27 @@ func repo_push(Object $opt_name, Str $dummy) {
 
 # Clones a repo by a given name and user id
 func repo_clone(Object $opt_name, Str $opt_params) {
+    # $my_user_id is just an optional param for testing.
+    my ($repo_name, $owner_id, $my_user_id) = split ':', $opt_params;
+
+    # TODO: Check if user has specified .git at the end of $repo_name
+    # TODO: Escape $repo_name
+    system("git", "init", "--bare", "$repo_name.git");
+    die "Couldn't init bare repo"
+        if $? == -1;
+    system("git", "config", "--file", "$repo_name.git/config", "user.email", "$my_user_id")
+        if $my_user_id;
+    die "Couldn't set user.email"
+        if $? == -1;
+
     my $relay = GitP2P::Core::Finder::get_relay("gitp2p-config");
     my $s = GitP2P::Core::Finder::establish_connection($relay, $cfg);
 
-    my ($user_id, $repo_name) = split ':', $opt_params;
-    my $msg = GitP2P::Proto::Relay::build("clone", [$user_id, $repo_name]);
+    my $msg = GitP2P::Proto::Relay::build("clone", [$repo_name, $owner_id]);
 
     say "[INFO] Message '$msg'";
     $s->send($msg);
-    
+     
     my $resp = <$s>;
     chomp $resp;
 
