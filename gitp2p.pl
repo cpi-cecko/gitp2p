@@ -68,17 +68,19 @@ func repo_init(Object $opt_name, Str $init_params) {
     system("git", "config", "--file", "$bare_repo_path/config", "user.email", "$owner_id");
 }
 
-# Fetches the list of available relays and uploads sends its address
-# there.
+# Fetches the list of available relays and uploads the repo's address there
 func repo_upload(Object $opt_name, Str $dummy) {
     my $repo_name = path(path("./")->absolute)->basename;
-    my $user_id = `git config --get user.email`;
-    chomp $user_id;
+    # TODO: Don't try to guess the repo path
+    die ("No bare repo config at " . path("../$repo_name.git/config")->absolute)
+        if not path("../$repo_name.git/config")->exists;
+    my $owner_id = `git config --file ../$repo_name.git/config --get user.email`;
+    chomp $owner_id;
 
     my $relay = GitP2P::Core::Finder::get_relay("gitp2p-config");
     my $s = GitP2P::Core::Finder::establish_connection($relay, $cfg);
 
-    my $msg = GitP2P::Proto::Relay::build("upload", [$repo_name, $user_id]);
+    my $msg = GitP2P::Proto::Relay::build("upload", [$repo_name, $owner_id]);
 
     say "[INFO] Message '$msg'";
     $s->send($msg);
