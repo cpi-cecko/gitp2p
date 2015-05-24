@@ -21,7 +21,7 @@ use GitP2P::Core::Finder;
 
 my $man = 0;
 my $help = 0;
-my $cfg = undef; # Currently, the config only contains the port number
+my $cfg = ""; # Currently, the config only contains the port number
 
 GetOptions('help|?'  => \$help, 
            man       => \$man,
