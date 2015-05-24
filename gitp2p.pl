@@ -72,6 +72,9 @@ func repo_init(Object $opt_name, Str $init_params) {
 func repo_upload(Object $opt_name, Str $dummy) {
     my $repo_name = path(path("./")->absolute)->basename;
     # TODO: Don't try to guess the repo path
+    # TODO: The command can simply be invoked at the root of a dir containing
+    #       the working dir and the bare repo. Therefore, the path to the
+    #       config can either be ../$repo_name.git/config or $repo_name.git/config
     die ("No bare repo config at " . path("../$repo_name.git/config")->absolute)
         if not path("../$repo_name.git/config")->exists;
     my $owner_id = `git config --file ../$repo_name.git/config --get user.email`;
