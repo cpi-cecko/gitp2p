@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 
 use strict;
 use warnings;
@@ -16,7 +16,7 @@ use GitP2P::Proto::Relay;
 
 
 my %operations = ( "upload" => \&on_upload
-                 , "push"   => \&on_push
+                 , "push"   => \&on_push 
                  , "fetch"  => \&on_fetch
                  , "clone"  => \&on_clone
                  , "list"   => \&on_list
