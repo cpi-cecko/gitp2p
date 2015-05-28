@@ -43,7 +43,7 @@ pod2usage(-exitval => 0, -verbose => 2) if $man;
 func repo_init(Object $opt_name, Str $init_params) {
     # TODO: Check if there's a valid repo at $repo_dir
     my ($repo_dir, $owner_id) = split /:/, $init_params;
-    # TODO: User pod2usage
+    # TODO: Use pod2usage
     die ("gitp2p --init <repo_dir>:<owner_id>")
         if not $owner_id;
 
@@ -79,6 +79,8 @@ func repo_upload(Object $opt_name, Str $dummy) {
         if not path("../$repo_name.git/config")->exists;
     my $owner_id = `git config --file ../$repo_name.git/config --get user.email`;
     chomp $owner_id;
+
+    # TODO: git gc after upload
 
     my $relay = GitP2P::Core::Finder::get_relay("gitp2p-config");
     my $s = GitP2P::Core::Finder::establish_connection($relay, $cfg);
