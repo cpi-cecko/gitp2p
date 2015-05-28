@@ -159,12 +159,16 @@ func repo_clone(Object $opt_name, Str $opt_params) {
 
     # TODO: Check if user has specified .git at the end of $repo_name
     # TODO: Escape $repo_name
-    system("git", "init", "--bare", "$repo_name.git");
+    system("git", "init", "--bare", "../$repo_name.git");
     die "Couldn't init bare repo"
         if $? == -1;
-    system("git", "config", "--file", "$repo_name.git/config", "user.email", "$my_user_id")
+    system("git", "config", "--file", "../$repo_name.git/config", "user.email", "$my_user_id")
         if $my_user_id;
     die "Couldn't set user.email"
+        if $? == -1;
+
+    system("git", "init");
+    die "Couldn't init repo"
         if $? == -1;
 
     my $relay = GitP2P::Core::Finder::get_relay("gitp2p-config");
@@ -180,6 +184,47 @@ func repo_clone(Object $opt_name, Str $opt_params) {
 
     say "[INFO] Response '$resp'";
     close $s;
+
+    # Gets first peer, asks for objects count, divides the count on the number
+    # of peers.
+    # Sends each pear, count + offset in the objects. They give them sorted by
+    # SHA1.
+    my @peers = split ',', $resp;
+    my $info_msg = GitP2P::Proto::Daemon::build_comm("obj_count", [$repo_name]);
+
+    my $pS = GitP2P::Core::Finder::establish_connection($peers[0], $cfg);
+    $pS->send($info_msg);
+
+    my $count = <$pS>;
+    chomp $count;
+
+    close $pS;
+
+    say "Count: $count";
+    say "Peers: @peers";
+
+    # TODO: Check count
+    my $divide = $count / scalar @peers;
+    my $offset = 0;
+    for my $peer (@peers) {
+        $pS = GitP2P::Core::Finder::establish_connection($peer, $cfg);
+        my $objs_req = GitP2P::Proto::Daemon::build_comm("give", [$repo_name, $divide, $offset]);
+        $offset += $divide;
+        $pS->send($objs_req);
+        my $msg = <$pS>;
+        chomp $msg;
+        while ($msg !~ /^end$/) {
+            my $parsed_msg = GitP2P::Proto::Daemon->new;
+            $parsed_msg->parse($msg);
+            my (undef, undef, $hash, $cnts) = split /:/, $parsed_msg->op_data;
+            my ($dir, $file) = (substr($hash, 0, 2), substr($hash, 2));
+            my $obj_path = path("../$repo_name/.git/objects/$dir/$file")->touchpath;
+            $obj_path->spew(($cnts));
+            $msg = <$pS>;
+        }
+
+        close $pS;
+    }
 }
 
 # Lists available repos

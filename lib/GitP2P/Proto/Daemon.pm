@@ -46,7 +46,7 @@ method parse(Str $data) {
 
 # TODO: Check for members' existence
 func build_data(Str $op_name, HashRef[Str] $op_data is ro) {
-    my $cnts = encode_base64 ${op_data}->{cnts};
+    my $cnts = encode_base64 ${op_data}->{cnts}, "";
     chomp $cnts;
     my $user_id = ${op_data}->{user_id};
     chomp $user_id;
