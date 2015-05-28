@@ -129,7 +129,7 @@ func repo_push(Object $opt_name, Str $dummy) {
         for my $packFile ($packDir->children) {
             if ($packFile =~ /\.idx$/) {
                 my $contents = path($packFile)->slurp_raw;
-                my $msg = GitP2P::Proto::Daemon::build("recv",
+                my $msg = GitP2P::Proto::Daemon::build_data("recv",
                     {'user_id' => $user_id, 
                      'type' => "idx",
                      'cnts' => $contents});
@@ -138,7 +138,7 @@ func repo_push(Object $opt_name, Str $dummy) {
             }
             elsif ($packFile =~ /\.pack$/) {
                 my $contents = path($packFile)->slurp_raw;
-                my $msg = GitP2P::Proto::Daemon::build("recv", 
+                my $msg = GitP2P::Proto::Daemon::build_data("recv", 
                     {'user_id' => $user_id, 
                      'type' => "pack",
                      'cnts' => $contents});
