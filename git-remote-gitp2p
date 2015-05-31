@@ -29,6 +29,7 @@ GetOptions('help|?'  => \$help,
            'init=s'  => \&repo_init,
            upload    => \&repo_upload,
            push      => \&repo_push,
+           # TODO: Remote branches. Don't add them to repo. FETCH_HEAD.
            fetch     => \&repo_fetch,
            'clone=s' => \&repo_clone,
            list      => \&repo_list,
@@ -40,6 +41,7 @@ pod2usage(-exitval => 0, -verbose => 2) if $man;
 # Accepts a repo_dir and user_id
 # TODO: Try to deduce repo_dir and user_id if not present
 # TODO: The user.email is not a user id!!!
+# TODO: Make HEAD point to master after creation
 func repo_init(Object $opt_name, Str $init_params) {
     # TODO: Check if there's a valid repo at $repo_dir
     my ($repo_dir, $owner_id) = split /:/, $init_params;
