@@ -19,6 +19,95 @@ use GitP2P::Proto::Daemon;
 use GitP2P::Core::Finder;
 
 
+my %capabilities = (
+      capabilities => \&do_capabilities
+    , list => \&do_list
+    , fetch => \&do_fetch
+);
+
+my $cfg = "";
+my ($remote, $url) = @ARGV;
+
+sub echo($) {
+    my $str = shift;
+    system "echo", $str;
+}
+
+sub echo_empty {
+    system "echo", "";
+}
+
+
+func do_capabilities() {
+    echo "fetch";
+    echo "list";
+    echo_empty;
+}
+
+func do_fetch() {
+    warn "fetching";
+}
+
+func do_list() {
+    my $relay = GitP2P::Core::Finder::get_relay("gitp2p-config");
+    my $s = GitP2P::Core::Finder::establish_connection($relay, $cfg);
+
+    # gitp2p://<user_name>/<repo_name>
+    if ($url !~ /^gitp2p:\/\/([a-z0-9@.-]*)\/(.*)$/) {
+        die "Invalid url: $url";
+    }
+    my ($owner, $repo) = ($1, $2);
+
+    my $msg = GitP2P::Proto::Relay::build("get-peers", [$repo, $owner]);
+
+    $s->send($msg);
+
+    my $resp = <$s>;
+    chomp $resp;
+
+    close $s;
+
+    die "Bad resp: '$resp'"
+        if ($resp =~ /^NACK/);
+
+    my @peers = split /,/, $resp;
+
+    my $list_msg = GitP2P::Proto::Daemon::build_comm("list", [$repo]);
+    my $pS = GitP2P::Core::Finder::establish_connection($peers[0], $cfg);
+
+    $pS->send($list_msg);
+    
+    $resp = <$pS>;
+    chomp $resp;
+
+    close $pS;
+
+    my $refs = GitP2P::Proto::Daemon->new;
+    $refs->parse($resp);
+
+    my (undef, undef, undef, $cnts) = split /:/, $refs->op_data;
+
+    for my $ref (split /\n/, $cnts) {
+        $ref =~ s/\t+/ /g;
+        echo "$ref";
+    }
+    echo_empty;
+}
+
+
+while (<STDIN>) {
+    chomp;
+    warn $_;
+    die "Invalid capability '$_'"
+        if not exists $capabilities{$_};
+
+    $capabilities{$_}->();
+}
+
+
+
+
+=begin comment
 my $man = 0;
 my $help = 0;
 my $cfg = ""; # Currently, the config only contains the port number
@@ -245,6 +334,8 @@ func repo_list(Object $opt_name, Str $dummy) {
     say "Available repos: \n  " . join "\n  ", split /, /, $resp;
     close $s;
 }
+=end comment
+=cut
 
 
 __END__

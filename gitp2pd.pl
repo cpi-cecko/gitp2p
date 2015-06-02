@@ -19,16 +19,37 @@ use GitP2P::Proto::Daemon;
 use App::Daemon qw/daemonize/;
 daemonize();
 
-my %operations = ( "obj_count" => \&on_obj_count,
-                 , "give" => \&on_give,
+my %operations = ( "list"      => \&on_list,
+                 , "obj_count" => \&on_obj_count,
+                 , "give"      => \&on_give,
                  );
 
 my %cfg = ( repos => {
-                  "gitp2p" => "/mnt/files/PROJECTS/gitp2p/"
-                , "01-repo-one-file-master" => "/mnt/files/PROJECTS/gitp2p/t/testRepos/01-repo-one-file-master/01-repo-one-file-master/"
+                  "gitp2p" => "/mnt/files/PROJECTS/.git"
+                , "01-repo-one-file-master" => "/mnt/files/PROJECTS/gitp2p/t/testRepos/01-repo-one-file-master/.git"
             }
             , "port" => "47001"
           );
+
+
+# Lists refs for a given repo
+func on_list(Object $sender, Str $repo_name) {
+    my $repo_refs_path = path($cfg{repos}->{$repo_name} . "/info/refs");
+    say "[INFO] Refs at " . $repo_refs_path->realpath;
+
+    my $refs = $repo_refs_path->slurp;
+    say "[INFO] Refs: $refs";
+
+    # TODO: rework protocol
+    my $msg = GitP2P::Proto::Daemon::build_data("recv",
+        {'user_id' => 'dummyuid',
+         'type'    => 'refs',
+         'hash'    => 'dummy',
+         'cnts'    => $refs
+        });
+    say "[INFO] Refs message: $msg";
+    $sender->write($msg . "\n");
+}
 
 # The daemon maintains a file with refs to each repo by name
 func on_obj_count(Object $sender, Str $repo_name) {

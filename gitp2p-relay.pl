@@ -15,12 +15,42 @@ use IO::Async::Loop;
 use GitP2P::Proto::Relay;
 
 
-my %operations = ( "upload" => \&on_upload
-                 , "push"   => \&on_push 
-                 , "fetch"  => \&on_fetch
-                 , "clone"  => \&on_clone
-                 , "list"   => \&on_list
+my %operations = ( "get-peers" => \&on_get_peers
+                 , "upload"    => \&on_upload
+                 , "push"      => \&on_push 
+                 , "fetch"     => \&on_fetch
+                 , "clone"     => \&on_clone
+                 , "list"      => \&on_list
                  );
+
+
+func on_get_peers(Object $sender, Str $op_data) {
+    if ($op_data =~ /^(.*):(.*)$/) {
+        my ($repo_name, $owner_id) = ($1, $2);
+        print "[INFO] Searching repo: $repo_name from $owner_id\n";
+
+        my $peers = path("peers");
+        if ($peers->exists) {
+            my @peers_addr;
+            for ($peers->lines) {
+                if ($_ =~ /\Q$repo_name\E:\Q$owner_id\E(?::[^\s]+)? \^ (.*)\n$/) {
+                    push @peers_addr, $1;
+                }
+            }
+            scalar @peers_addr == 0
+                and print "[INFO] No peers for repo\n"
+                    and $sender->write("NACK: no peers for repo\n") 
+                        and return;
+
+            print "[INFO] Sending " . (join ',', @peers_addr) . "\n";
+            $sender->write((join ',', @peers_addr) . "\n");
+        }
+        else {
+            print "[INFO] No peers\n";
+            $sender->write("NACK: no peers\n");
+        }
+    }
+}
 
 
 func on_upload(Object $sender, Str $op_data) {
