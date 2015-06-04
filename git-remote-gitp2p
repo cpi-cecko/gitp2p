@@ -16,14 +16,10 @@ use IO::Socket::INET;
 
 use GitP2P::Proto::Relay;
 use GitP2P::Proto::Daemon;
+use GitP2P::Proto::Packet;
 use GitP2P::Core::Finder;
+use GitP2P::Core::Common qw/unpack_objects/;
 
-
-my %capabilities = (
-      capabilities => \&do_capabilities
-    , list => \&do_list
-    , fetch => \&do_fetch
-);
 
 my $cfg = "";
 my ($remote, $url) = @ARGV;
@@ -37,6 +33,14 @@ sub echo_empty {
     system "echo", "";
 }
 
+func get_repo_info(Str $url) {
+    # gitp2p://<user_name>/<repo_name>
+    if ($url !~ /^gitp2p:\/\/([a-z0-9@.-]*)\/(.*)$/) {
+        die "Invalid url: $url";
+    }
+    return ($1, $2);
+}
+
 
 func do_capabilities() {
     echo "fetch";
@@ -44,19 +48,11 @@ func do_capabilities() {
     echo_empty;
 }
 
-func do_fetch() {
-    warn "fetching";
-}
-
 func do_list() {
     my $relay = GitP2P::Core::Finder::get_relay("gitp2p-config");
     my $s = GitP2P::Core::Finder::establish_connection($relay, $cfg);
 
-    # gitp2p://<user_name>/<repo_name>
-    if ($url !~ /^gitp2p:\/\/([a-z0-9@.-]*)\/(.*)$/) {
-        die "Invalid url: $url";
-    }
-    my ($owner, $repo) = ($1, $2);
+    my ($owner, $repo) = get_repo_info($url);
 
     my $msg = GitP2P::Proto::Relay::build("get-peers", [$repo, $owner]);
 
@@ -94,14 +90,134 @@ func do_list() {
     echo_empty;
 }
 
+func do_fetch(ArrayRef[Str] $refs) {
+    my ($owner, $repo) = get_repo_info($url);
+    my $relay_msg = GitP2P::Proto::Relay::build("get-peers", [$repo, $owner]);
+
+    my $relay = GitP2P::Core::Finder::get_relay("gitp2p-config");
+    my $s = GitP2P::Core::Finder::establish_connection($relay, $cfg);
+
+    $s->send($relay_msg);
+
+    my $resp = <$s>;
+    chomp $resp;
+
+    close $s;
+
+    die "Bad resp: '$resp'"
+        if ($resp =~ /^NACK/);
+
+    my @want;
+    my $out = `git show-ref 2>gitp2p.stderr`; # TODO: Check for error
+    my @my_refs = split /\n/, $out;
+    for (@$refs) {
+        warn "Getting wants";
+        push @want, $_
+            if not grep { $_ } @my_refs;
+    }
+
+    my @have;
+    # Runs git-unpack-objects because we currently don't know how to do unpack
+    # by hand
+    # TODO: Finding the .git repo is not so simple
+    my $repo_root = path("./.git");
+    if ($repo_root->exists) {
+        warn "Getting haves";
+        my $obj_dir = $repo_root->child("objects/pack");
+        $obj_dir->child("pack")->exists
+            and $repo_root->child("pack")->children
+                and unpack_packs($repo_root->child("pack"), $obj_dir);
+
+        my @obj_parents = $obj_dir->children(qr/^\d\d/);
+        my @objects = map {
+                        my $dir = $_;
+                        map {
+                            $dir->absolute . "/" . $_->basename;
+                        } $dir->children;
+                      } @obj_parents;
+
+        @have = @objects;
+    }
+
+    warn "Wants: " . scalar @want;
+    my $packet = GitP2P::Proto::Packet->new;
+    for (@want) {
+        $packet->write("want $_");
+    }
+
+    warn "Haves: " . scalar @have;
+    for (@have) {
+        $packet->write("have $_");
+    }
+
+    # TODO: Handle dead peers
+    # Send desires
+    my @peers = split /,/, $resp;
+    my %peer_info;
+    my $id = 0;
+    for my $peer (@peers) {
+        my $peer_packet = GitP2P::Proto::Packet->new;
+        $peer_packet->write("id $id");
+        $peer_packet->append(\$packet);
+        warn $peer_packet->to_send;
+
+        my $pS = GitP2P::Core::Finder::establish_connection($peer, $cfg);
+        $pS->send(GitP2P::Proto::Daemon::build_data(
+                "fetch", {  'user_id' => "dummy", 
+                            'type' => "pkt_line",
+                            'hash' => "dummy",
+                            'cnts' => $peer_packet->to_send}));
+
+        $peer_info{$_} = { id => $id
+                         , sock => fileno $pS
+                         };
+
+        $id++;
+    }
+
+    # Receives objects
+    for my $peer (@peers) {
+        # TODO: Fork
+        if (open my $fh, ">&=", $peer_info{$peer}->{sock}) {
+            while (defined (my $obj = <$fh>)) {
+                warn $obj;
+                # Create object
+            }
+        } else {
+            warn "$0: fdopen " . $peer_info{$peer}->{sock} . ": $!";
+        }
+    }
+}
+
 
 while (<STDIN>) {
     chomp;
     warn $_;
-    die "Invalid capability '$_'"
-        if not exists $capabilities{$_};
 
-    $capabilities{$_}->();
+    $_ =~ /^(\w+)\s?/;
+    my ($cmd) = $1;
+    if ($cmd =~ /capabilities/) {
+        do_capabilities();
+    }
+    elsif ($cmd =~ /list/) {
+        do_list();
+    }
+    elsif ($cmd =~ /fetch/) {
+        $_ =~ /^\w+\s(.*)$/;
+        my @refs = ($1);
+
+        while (<STDIN>) {
+            last if $_ =~ /^\s*$/;
+
+            $_ =~ /^\w+\s(.*)$/;
+            push @refs, $1;
+        }
+
+        do_fetch(\@refs);
+    } 
+    else {
+        die "Invalid capability '$cmd'";
+    }
 }
 
 

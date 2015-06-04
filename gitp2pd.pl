@@ -9,17 +9,20 @@ use FindBin;
 use lib "$FindBin::Bin/lib";
 
 use Path::Tiny;
+use File::Copy;
 use Method::Signatures;
 use IO::Async::Stream;
 use IO::Async::Loop;
 use List::Util qw/reduce/;
 
 use GitP2P::Proto::Daemon;
+use GitP2P::Core::Common qw/unpack_packs/;
 
 use App::Daemon qw/daemonize/;
 daemonize();
 
 my %operations = ( "list"      => \&on_list,
+                 , "fetch"     => \&on_fetch,
                  , "obj_count" => \&on_obj_count,
                  , "give"      => \&on_give,
                  );
@@ -51,17 +54,22 @@ func on_list(Object $sender, Str $repo_name) {
     $sender->write($msg . "\n");
 }
 
+# Returns wanted object by client
+func on_fetch(Object $sender, Str $data) { 
+    print "[INFO] $data";
+}
+
 # The daemon maintains a file with refs to each repo by name
 func on_obj_count(Object $sender, Str $repo_name) {
-    my $repo = path($cfg{repos}->{$repo_name} . ".git/objects/");
-    say "[INFO] repo " . $repo->realpath;
+    my $repo_obj = path($cfg{repos}->{$repo_name} . "/objects/");
+    say "[INFO] repo " . $repo_obj->realpath;
 
-    $repo->child("pack")->exists
-        and $repo->child("pack")->children
-            and unpack_packs($repo->child("pack"), $repo);
+    $repo_obj->child("pack")->exists
+        and $repo_obj->child("pack")->children
+            and unpack_packs($repo_obj->child("pack"), $repo_obj);
 
-    say "[INFO] repo " . $repo->realpath;
-    my @obj_dirs = $repo->children(qr/^\d\d/);
+    say "[INFO] repo " . $repo_obj->realpath;
+    my @obj_dirs = $repo_obj->children(qr/^\d\d/);
     my $obj_count = reduce { $a + scalar $b->children } 0, @obj_dirs;
 
     say "[INFO] object count: $obj_count";
@@ -69,24 +77,10 @@ func on_obj_count(Object $sender, Str $repo_name) {
     $sender->write("$obj_count\n");
 }
 
-func unpack_packs(Object $pack_dir, Object $repo_dir) {
-    my $temp_dir = path((path($repo_dir->absolute . "/../../temp")->mkpath)[0]);
-    say "[INFO] Temp dir " . $temp_dir;
-    $pack_dir->move($temp_dir);
-    my $pack = ($temp_dir->children(qr/^pack-.*\.pack$/))[0];
-    say "[INFO] pack " . $pack->realpath;
-
-    # TODO: escape $pack
-    system ("git unpack-objects <" . $pack->realpath) == -1
-        and die $?;
-
-    $temp_dir->remove;
-}
-
 func on_give(Object $sender, Str $op_data) {
     my ($repo_name, $count, $offset) = split /:/, $op_data;
 
-    my $repo = path($cfg{repos}->{$repo_name} . ".git/objects/");
+    my $repo = path($cfg{repos}->{$repo_name} . "/objects/");
     say "[INFO] repo " . $repo->realpath;
 
     $repo->child("pack")->exists
@@ -108,7 +102,8 @@ func on_give(Object $sender, Str $op_data) {
     @objects = @objects[$offset ... $offset+$count-1];
     say "[INFO] objects " . join "\n", @objects;
 
-    my $user_id = `git config --local --get user.email`;
+    my $config_file = $cfg{repos}->{$repo_name} . "/config";
+    my $user_id = system "git config --file " . $config_file . " --get user.email";
 
     for my $obj (@objects) {
         my @obj_path = split /\//, $obj;
