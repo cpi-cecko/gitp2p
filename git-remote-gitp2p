@@ -13,6 +13,7 @@ use Pod::Usage;
 use Method::Signatures;
 use Path::Tiny;
 use IO::Socket::INET;
+use Data::Dumper;
 
 use GitP2P::Proto::Relay;
 use GitP2P::Proto::Daemon;
@@ -112,7 +113,8 @@ func do_fetch(ArrayRef[Str] $refs) {
     my @my_refs = split /\n/, $out;
     for (@$refs) {
         warn "Getting wants";
-        push @want, $_
+        $_ =~ /^([a-f0-9]{40}).*$/;
+        push @want, $1
             if not grep { $_ } @my_refs;
     }
 
@@ -154,23 +156,38 @@ func do_fetch(ArrayRef[Str] $refs) {
     # Send desires
     my @peers = split /,/, $resp;
     my %peer_info;
-    my $id = 0;
+    my $id = 0; # Used to determine what each pear will send
     for my $peer (@peers) {
         my $peer_packet = GitP2P::Proto::Packet->new;
-        $peer_packet->write("id $id");
+
+        # pkt_line format ABNF
+        # message = repo NL id NL *wants *haves
+        #
+        # repo = "repo" SP user_id SP repo_name
+        # id = "id" SP 1*DIGIT SP 1*DIGIT
+        # wants = "want" SP obj-id NL
+        # haves = "have" SP obj-id NL
+        #
+        # user_id = *ALNUM
+        # repo_name = *ALNUM
+        $peer_packet->write("repo $repo $owner");
+        $peer_packet->write("id $id " . scalar @peers);
         $peer_packet->append(\$packet);
+
+        #my $hexed = join "", map { sprintf "%02x", ord $_ } split //, $peer_packet->to_send;
         warn $peer_packet->to_send;
-
         my $pS = GitP2P::Core::Finder::establish_connection($peer, $cfg);
-        $pS->send(GitP2P::Proto::Daemon::build_data(
-                "fetch", {  'user_id' => "dummy", 
-                            'type' => "pkt_line",
-                            'hash' => "dummy",
-                            'cnts' => $peer_packet->to_send}));
+        my $pack = GitP2P::Proto::Daemon::build_data(
+              "fetch", { 'user_id' => "dummy", 
+                         'type' => "pkt_line",
+                         'hash' => "dummy",
+                         'cnts' => $peer_packet->to_send});
+        warn $pack;
+        $pS->send($pack); 
 
-        $peer_info{$_} = { id => $id
-                         , sock => fileno $pS
-                         };
+        $peer_info{$peer} = { id => $id
+                            , sock => $pS
+                            };
 
         $id++;
     }
@@ -178,14 +195,20 @@ func do_fetch(ArrayRef[Str] $refs) {
     # Receives objects
     for my $peer (@peers) {
         # TODO: Fork
-        if (open my $fh, ">&=", $peer_info{$peer}->{sock}) {
-            while (defined (my $obj = <$fh>)) {
-                warn $obj;
-                # Create object
-            }
-        } else {
-            warn "$0: fdopen " . $peer_info{$peer}->{sock} . ": $!";
+        my $pS = $peer_info{$peer}->{sock};
+        my $obj = <$pS>;
+        chomp $obj;
+        while ($obj !~ /^end$/) {
+            my $parsed_obj = GitP2P::Proto::Daemon->new;
+            $parsed_obj->parse($obj);
+            my (undef, undef, $hash, $cnts) = split /:/, $parsed_obj->op_data;
+            my ($dir, $file) = (substr($hash, 0, 2), substr($hash, 2));
+            my $obj_path = path("$repo/.git/objects/$dir/$file")->touchpath;
+            $obj_path->spew(($cnts));
+
+            $obj = <$pS>;
         }
+        close $pS;
     }
 }
 
@@ -214,6 +237,8 @@ while (<STDIN>) {
         }
 
         do_fetch(\@refs);
+
+        echo_empty;
     } 
     else {
         die "Invalid capability '$cmd'";

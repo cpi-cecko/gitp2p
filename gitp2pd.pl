@@ -14,6 +14,7 @@ use Method::Signatures;
 use IO::Async::Stream;
 use IO::Async::Loop;
 use List::Util qw/reduce/;
+use List::MoreUtils qw/indexes/;
 
 use GitP2P::Proto::Daemon;
 use GitP2P::Core::Common qw/unpack_packs/;
@@ -27,9 +28,10 @@ my %operations = ( "list"      => \&on_list,
                  , "give"      => \&on_give,
                  );
 
+# TODO: These absolute paths are not so good for configs
 my %cfg = ( repos => {
-                  "gitp2p" => "/mnt/files/PROJECTS/.git"
-                , "01-repo-one-file-master" => "/mnt/files/PROJECTS/gitp2p/t/testRepos/01-repo-one-file-master/.git"
+                  "gitp2p" => "/media/files/PROJECTS/.git"
+                , "01-repo-one-file-master" => "/media/files/PROJECTS/gitp2p/t/testRepos/01-repo-one-file-master/.git"
             }
             , "port" => "47001"
           );
@@ -57,6 +59,69 @@ func on_list(Object $sender, Str $repo_name) {
 # Returns wanted object by client
 func on_fetch(Object $sender, Str $data) { 
     print "[INFO] $data";
+
+    my (undef, undef, undef, $objects) = split /:/, $data;
+
+    # print "[INFO] $objects";
+    # my $hexed = join "", map { sprintf "%02x", ord $_ } split //, $objects;
+    # print "[INFO] $hexed";
+    my ($repo, $id, @rest) = split /\n/, $objects;
+    # TODO: Validate repo line
+    my (undef, $repo_name, $repo_owner) = split / /, $repo;
+    # TODO: Validate id
+    my (undef, $beg, $step) = split / /, $id;
+
+    my @wants;
+    my @haves;
+    for my $pkt_line (@rest) {
+        $pkt_line =~ /^(\w+)\s([a-f0-9]{40})\n?$/;
+        $1 eq "want"
+            and push @wants, $2;
+        $1 eq "have"
+            and push @haves, $2;
+    }
+
+    my $repo_obj = path($cfg{repos}->{$repo_name} . "/objects/");
+    say "[INFO] repo " . $repo_obj->realpath;
+
+    $repo_obj->child("pack")->exists
+        and $repo_obj->child("pack")->children
+            and unpack_packs($repo_obj->child("pack"), $repo_obj);
+
+    my @obj_dirs = $repo_obj->children(qr/^\d\d/);
+    my @objects = map { 
+                     my $dir = $_;
+                     map { 
+                         $dir->absolute . "/" . $_->basename
+                     } $dir->children
+                  } @obj_dirs;
+
+    # TODO: Use wants and haves properly
+    # Get every $step-th object beggining from $beg
+    # TODO: Remove undefs
+    @objects = @objects[map { $_ += $beg } indexes { $_ % $step == 0 } (0..$#objects)];
+    @objects = grep { defined $_ } @objects;
+    say "[INFO] objects " . join "\n", @objects;
+
+    my $config_file = $cfg{repos}->{$repo_name} . "/config";
+    my $user_id = qx(git config --file $config_file --get user.email);
+    say "[INFO] config: $config_file";
+    say "[INFO] user id: $user_id";
+
+    for my $obj (@objects) {
+        my @obj_path = split /\//, $obj;
+        my ($dir_hash, $file_hash) = @obj_path[-2, -1];
+        print "$dir_hash:$file_hash\n";
+        my $msg = GitP2P::Proto::Daemon::build_data("recv", 
+            {'user_id' => $user_id,
+             'type' => 'objects',
+             'hash' => "$dir_hash$file_hash",
+             'cnts' => path($obj)->slurp_raw
+            });
+        print "$msg\n";
+        $sender->write($msg . "\n")
+    }
+    $sender->write("end\n");
 }
 
 # The daemon maintains a file with refs to each repo by name
