@@ -44,14 +44,21 @@ func on_list(Object $sender, GitP2P::Proto::Daemon $msg) {
     say "[INFO] Refs at " . $repo_refs_path->realpath;
 
     my $refs = $repo_refs_path->slurp;
-    say "[INFO] Refs: $refs";
+
+    my $refs_to_send = '';
+    # Don't send remote refs
+    for my $ref (split /\n/, $refs) {
+        $ref !~ /remotes/
+            and $refs_to_send .= $ref . "\n";
+    }
+    say "[INFO] Refs: $refs_to_send";
 
     # TODO: rework protocol
     my $refs_msg = GitP2P::Proto::Daemon::build_data("recv",
         {'user_id' => 'dummyuid',
          'type'    => 'refs',
          'hash'    => 'dummy',
-         'cnts'    => $refs
+         'cnts'    => $refs_to_send
         });
     say "[INFO] Refs message: $refs_msg";
     $sender->write($refs_msg . "\n");
