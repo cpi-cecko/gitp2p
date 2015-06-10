@@ -38,7 +38,8 @@ my %cfg = ( repos => {
 
 
 # Lists refs for a given repo
-func on_list(Object $sender, Str $repo_name) {
+func on_list(Object $sender, GitP2P::Proto::Daemon $msg) {
+    my $repo_name = $msg->op_data;
     my $repo_refs_path = path($cfg{repos}->{$repo_name} . "/info/refs");
     say "[INFO] Refs at " . $repo_refs_path->realpath;
 
@@ -46,21 +47,21 @@ func on_list(Object $sender, Str $repo_name) {
     say "[INFO] Refs: $refs";
 
     # TODO: rework protocol
-    my $msg = GitP2P::Proto::Daemon::build_data("recv",
+    my $refs_msg = GitP2P::Proto::Daemon::build_data("recv",
         {'user_id' => 'dummyuid',
          'type'    => 'refs',
          'hash'    => 'dummy',
          'cnts'    => $refs
         });
-    say "[INFO] Refs message: $msg";
-    $sender->write($msg . "\n");
+    say "[INFO] Refs message: $refs_msg";
+    $sender->write($refs_msg . "\n");
 }
 
 # Returns wanted object by client
-func on_fetch(Object $sender, Str $data) { 
-    print "[INFO] $data";
+func on_fetch(Object $sender, GitP2P::Proto::Daemon $msg) { 
+    # print "[INFO] $msg->op_data";
 
-    my (undef, undef, undef, $objects) = split /:/, $data;
+    my $objects = $msg->op_data;
 
     # print "[INFO] $objects";
     # my $hexed = join "", map { sprintf "%02x", ord $_ } split //, $objects;
@@ -86,9 +87,9 @@ func on_fetch(Object $sender, Str $data) {
 
     $repo_obj->child("pack")->exists
         and $repo_obj->child("pack")->children
-            and unpack_packs($repo_obj->child("pack"), $repo_obj);
+            and GitP2P::Core::Common::unpack_packs($repo_obj->child("pack"), $repo_obj);
 
-    my @obj_dirs = $repo_obj->children(qr/^\d\d/);
+    my @obj_dirs = $repo_obj->children(qr/^[a-f0-9]{2}/);
     my @objects = map { 
                      my $dir = $_;
                      map { 
@@ -98,7 +99,6 @@ func on_fetch(Object $sender, Str $data) {
 
     # TODO: Use wants and haves properly
     # Get every $step-th object beggining from $beg
-    # TODO: Remove undefs
     @objects = @objects[map { $_ += $beg } indexes { $_ % $step == 0 } (0..$#objects)];
     @objects = grep { defined $_ } @objects;
     say "[INFO] objects " . join "\n", @objects;
@@ -125,66 +125,66 @@ func on_fetch(Object $sender, Str $data) {
 }
 
 # The daemon maintains a file with refs to each repo by name
-func on_obj_count(Object $sender, Str $repo_name) {
-    my $repo_obj = path($cfg{repos}->{$repo_name} . "/objects/");
-    say "[INFO] repo " . $repo_obj->realpath;
-
-    $repo_obj->child("pack")->exists
-        and $repo_obj->child("pack")->children
-            and unpack_packs($repo_obj->child("pack"), $repo_obj);
-
-    say "[INFO] repo " . $repo_obj->realpath;
-    my @obj_dirs = $repo_obj->children(qr/^\d\d/);
-    my $obj_count = reduce { $a + scalar $b->children } 0, @obj_dirs;
-
-    say "[INFO] object count: $obj_count";
-
-    $sender->write("$obj_count\n");
-}
-
-func on_give(Object $sender, Str $op_data) {
-    my ($repo_name, $count, $offset) = split /:/, $op_data;
-
-    my $repo = path($cfg{repos}->{$repo_name} . "/objects/");
-    say "[INFO] repo " . $repo->realpath;
-
-    $repo->child("pack")->exists
-        and $repo->child("pack")->children
-            and unpack_packs($repo->child("pack"), $repo);
-
-    my @obj_dirs = $repo->children(qr/^\d\d/);
-    my @objects = map { 
-                     my $dir = $_;
-                     map { 
-                         $dir->absolute . "/" . $_->basename
-                     } $dir->children
-                  } @obj_dirs;
-
-    ($offset > $#objects or $offset+$count-1 > $#objects or
-     $offset < 0 or $count < 0)
-        and die ("Invalid slice " . $offset . ":" . ($offset+$count-1));
-
-    @objects = @objects[$offset ... $offset+$count-1];
-    say "[INFO] objects " . join "\n", @objects;
-
-    my $config_file = $cfg{repos}->{$repo_name} . "/config";
-    my $user_id = system "git config --file " . $config_file . " --get user.email";
-
-    for my $obj (@objects) {
-        my @obj_path = split /\//, $obj;
-        my ($dir_hash, $file_hash) = @obj_path[-2, -1];
-        print "$dir_hash:$file_hash\n";
-        my $msg = GitP2P::Proto::Daemon::build_data("recv", 
-            {'user_id' => $user_id,
-             'type' => 'objects',
-             'hash' => "$dir_hash$file_hash",
-             'cnts' => path($obj)->slurp_raw
-            });
-        print "$msg\n";
-        $sender->write($msg . "\n")
-    }
-    $sender->write("end\n");
-}
+# func on_obj_count(Object $sender, Str $repo_name) {
+#     my $repo_obj = path($cfg{repos}->{$repo_name} . "/objects/");
+#     say "[INFO] repo " . $repo_obj->realpath;
+# 
+#     $repo_obj->child("pack")->exists
+#         and $repo_obj->child("pack")->children
+#             and unpack_packs($repo_obj->child("pack"), $repo_obj);
+# 
+#     say "[INFO] repo " . $repo_obj->realpath;
+#     my @obj_dirs = $repo_obj->children(qr/^\d\d/);
+#     my $obj_count = reduce { $a + scalar $b->children } 0, @obj_dirs;
+# 
+#     say "[INFO] object count: $obj_count";
+# 
+#     $sender->write("$obj_count\n");
+# }
+# 
+# func on_give(Object $sender, Str $op_data) {
+#     my ($repo_name, $count, $offset) = split /:/, $op_data;
+# 
+#     my $repo = path($cfg{repos}->{$repo_name} . "/objects/");
+#     say "[INFO] repo " . $repo->realpath;
+# 
+#     $repo->child("pack")->exists
+#         and $repo->child("pack")->children
+#             and unpack_packs($repo->child("pack"), $repo);
+# 
+#     my @obj_dirs = $repo->children(qr/^\d\d/);
+#     my @objects = map { 
+#                      my $dir = $_;
+#                      map { 
+#                          $dir->absolute . "/" . $_->basename
+#                      } $dir->children
+#                   } @obj_dirs;
+# 
+#     ($offset > $#objects or $offset+$count-1 > $#objects or
+#      $offset < 0 or $count < 0)
+#         and die ("Invalid slice " . $offset . ":" . ($offset+$count-1));
+# 
+#     @objects = @objects[$offset ... $offset+$count-1];
+#     say "[INFO] objects " . join "\n", @objects;
+# 
+#     my $config_file = $cfg{repos}->{$repo_name} . "/config";
+#     my $user_id = system "git config --file " . $config_file . " --get user.email";
+# 
+#     for my $obj (@objects) {
+#         my @obj_path = split /\//, $obj;
+#         my ($dir_hash, $file_hash) = @obj_path[-2, -1];
+#         print "$dir_hash:$file_hash\n";
+#         my $msg = GitP2P::Proto::Daemon::build_data("recv", 
+#             {'user_id' => $user_id,
+#              'type' => 'objects',
+#              'hash' => "$dir_hash$file_hash",
+#              'cnts' => path($obj)->slurp_raw
+#             });
+#         print "$msg\n";
+#         $sender->write($msg . "\n")
+#     }
+#     $sender->write("end\n");
+# }
 
 
 my $loop = IO::Async::Loop->new;
@@ -210,7 +210,7 @@ $loop->listen(
                     $sender->wrte("NACK: Invalid command - '$cmd'\n");
                 } else {
                     print "[INFO] Exec command: " . $msg->op_name . "\n";
-                    $operations{$msg->op_name}->($sender, $msg->op_data);
+                    $operations{$msg->op_name}->($sender, $msg);
                 }
 
                 $$buffref = "";

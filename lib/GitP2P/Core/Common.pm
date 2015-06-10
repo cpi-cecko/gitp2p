@@ -13,17 +13,17 @@ use File::Copy;
 func unpack_packs(Object $pack_dir, Object $repo_obj_dir) {
     # `git unpack-objects` doesn't care about bare repositories
     # Or does it?
-    my $repo_root = $repo_obj_dir->parent;
-    my $name = $repo_root->basename;
-    print "Repo name: $name\n";
-    if ($name =~ qr/^.*\.git$/) {
-        print "Moving '" . $repo_root->absolute . "' to '" . 
-                $repo_root->parent->absolute . "/.git'\n";
-        move($repo_root->absolute, $repo_root->parent->absolute . "/.git");
-        $repo_root = path($repo_root->parent->absolute . "/.git");
-        $repo_obj_dir = $repo_root->child("objects");
-        $pack_dir = $repo_obj_dir->child("pack");
-    }
+    # my $repo_root = $repo_obj_dir->parent;
+    # my $name = $repo_root->basename;
+    # print "Repo name: $name\n";
+    # if ($name =~ qr/^.+\.git$/) {
+    #     print "Moving '" . $repo_root->absolute . "' to '" . 
+    #             $repo_root->parent->absolute . "/.git'\n";
+    #     move($repo_root->absolute, $repo_root->parent->absolute . "/.git");
+    #     $repo_root = path($repo_root->parent->absolute . "/.git");
+    #     $repo_obj_dir = $repo_root->child("objects");
+    #     $pack_dir = $repo_obj_dir->child("pack");
+    # }
 
     my $temp_dir = path((path($repo_obj_dir->absolute . "/../../temp")->mkpath)[0]);
     $pack_dir->move($temp_dir);
@@ -31,17 +31,20 @@ func unpack_packs(Object $pack_dir, Object $repo_obj_dir) {
     say "[INFO] pack " . $pack->realpath;
 
 
-    # TODO: escape $pack
+    # Ensure that we're in the git repo. Otherwise unpack-objects may mess up
+    # things for us.
+    system ("pushd " . $repo_obj_dir->absolute . "../../");
     system ("git unpack-objects <" . $pack->realpath) == -1
         and die $?;
+    system ("popd");
 
-    if ($name =~ qr/^.*\.git$/) {
-        print "Moving '" . $repo_root->parent->absolute . "' to '" . 
-                $repo_root->absolute . "/.git'\n";
-        move($repo_root->parent->absolute . "/.git", $repo_root->absolute);
-    }
+    # if ($name =~ qr/^.+\.git$/) {
+    #     print "Moving '" . $repo_root->parent->absolute . "' to '" . 
+    #             $repo_root->absolute . "/.git'\n";
+    #     move($repo_root->parent->absolute . "/.git", $repo_root->absolute);
+    # }
 
-    $temp_dir->remove;
+    #$temp_dir->remove_tree;
 }
 
 

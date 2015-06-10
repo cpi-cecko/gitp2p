@@ -8,6 +8,7 @@ use MIME::Base64 qw/encode_base64 decode_base64/;
 
 
 has 'op_name' => ('is' => 'rw', 'isa' => 'Str');
+has 'op_info' => ('is' => 'rw', 'isa' => 'Str');
 has 'op_data' => ('is' => 'rw', 'isa' => 'Str');
 
 
@@ -30,7 +31,8 @@ method parse(Str $data) {
     if ($type eq "d") {
         my ($op_name, $user_id, $data_type, $hash, $cnts) = split / /, $rest;
         $self->op_name($op_name);
-        $self->op_data(join ":", ($user_id, $data_type, $hash, decode_base64 $cnts));
+        $self->op_info(join ":", ($user_id, $data_type, $hash));
+        $self->op_data(decode_base64 $cnts);
 
         return;
     } elsif ($type eq "c") {

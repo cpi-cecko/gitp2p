@@ -82,7 +82,7 @@ func do_list() {
     my $refs = GitP2P::Proto::Daemon->new;
     $refs->parse($resp);
 
-    my (undef, undef, undef, $cnts) = split /:/, $refs->op_data;
+    my $cnts = $refs->op_data;
 
     for my $ref (split /\n/, $cnts) {
         $ref =~ s/\t+/ /g;
@@ -199,12 +199,16 @@ func do_fetch(ArrayRef[Str] $refs) {
         my $obj = <$pS>;
         chomp $obj;
         while ($obj !~ /^end$/) {
+            warn "receives $obj";
             my $parsed_obj = GitP2P::Proto::Daemon->new;
             $parsed_obj->parse($obj);
-            my (undef, undef, $hash, $cnts) = split /:/, $parsed_obj->op_data;
+            my (undef, undef, $hash) = split /:/, $parsed_obj->op_info;
+            my $cnts = $parsed_obj->op_data;
             my ($dir, $file) = (substr($hash, 0, 2), substr($hash, 2));
             my $obj_path = path("$repo/.git/objects/$dir/$file")->touchpath;
-            $obj_path->spew(($cnts));
+            $obj_path->spew({binmode => ":raw"}, ($cnts));
+            # Debug
+            # path("temp/$dir/$file")->touchpath->spew({binmode => ":raw"}, ($cnts));
 
             $obj = <$pS>;
         }
@@ -215,6 +219,7 @@ func do_fetch(ArrayRef[Str] $refs) {
 
 while (<STDIN>) {
     chomp;
+    next if $_ =~ /^\s*$/;
     warn $_;
 
     $_ =~ /^(\w+)\s?/;
@@ -448,6 +453,7 @@ func repo_clone(Object $opt_name, Str $opt_params) {
         while ($msg !~ /^end$/) {
             my $parsed_msg = GitP2P::Proto::Daemon->new;
             $parsed_msg->parse($msg);
+            # TODO: BEWARE! Proto::Daemon has been changed!
             my (undef, undef, $hash, $cnts) = split /:/, $parsed_msg->op_data;
             my ($dir, $file) = (substr($hash, 0, 2), substr($hash, 2));
             my $obj_path = path("../$repo_name/.git/objects/$dir/$file")->touchpath;
