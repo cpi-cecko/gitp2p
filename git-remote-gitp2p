@@ -92,6 +92,8 @@ func do_list() {
 }
 
 func do_fetch(ArrayRef[Str] $refs) {
+    $cfg = "./cfg" if path("./cfg")->exists;
+
     my ($owner, $repo) = get_repo_info($url);
     my $relay_msg = GitP2P::Proto::Relay::build("get-peers", [$repo, $owner]);
 
