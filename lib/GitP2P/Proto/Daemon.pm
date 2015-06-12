@@ -27,7 +27,7 @@ has 'op_data' => ('is' => 'rw', 'isa' => 'Str');
 # TODO: Escape special characters like ':'
 method parse(Str $data) {
     my ($type, $rest) = (substr($data, 0, 1), substr($data, 1));
-    say $rest;
+
     if ($type eq "d") {
         my ($op_name, $user_id, $data_type, $hash, $cnts) = split / /, $rest;
         $self->op_name($op_name);
