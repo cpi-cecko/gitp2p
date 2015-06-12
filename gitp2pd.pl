@@ -24,8 +24,6 @@ daemonize();
 
 my %operations = ( "list"      => \&on_list,
                  , "fetch"     => \&on_fetch,
-                 , "obj_count" => \&on_obj_count,
-                 , "give"      => \&on_give,
                  );
 
 # TODO: These absolute paths are not so good for configs
@@ -131,68 +129,6 @@ func on_fetch(Object $sender, GitP2P::Proto::Daemon $msg) {
     $sender->write("end\n");
 }
 
-# The daemon maintains a file with refs to each repo by name
-# func on_obj_count(Object $sender, Str $repo_name) {
-#     my $repo_obj = path($cfg{repos}->{$repo_name} . "/objects/");
-#     say "[INFO] repo " . $repo_obj->realpath;
-# 
-#     $repo_obj->child("pack")->exists
-#         and $repo_obj->child("pack")->children
-#             and unpack_packs($repo_obj->child("pack"), $repo_obj);
-# 
-#     say "[INFO] repo " . $repo_obj->realpath;
-#     my @obj_dirs = $repo_obj->children(qr/^\d\d/);
-#     my $obj_count = reduce { $a + scalar $b->children } 0, @obj_dirs;
-# 
-#     say "[INFO] object count: $obj_count";
-# 
-#     $sender->write("$obj_count\n");
-# }
-# 
-# func on_give(Object $sender, Str $op_data) {
-#     my ($repo_name, $count, $offset) = split /:/, $op_data;
-# 
-#     my $repo = path($cfg{repos}->{$repo_name} . "/objects/");
-#     say "[INFO] repo " . $repo->realpath;
-# 
-#     $repo->child("pack")->exists
-#         and $repo->child("pack")->children
-#             and unpack_packs($repo->child("pack"), $repo);
-# 
-#     my @obj_dirs = $repo->children(qr/^\d\d/);
-#     my @objects = map { 
-#                      my $dir = $_;
-#                      map { 
-#                          $dir->absolute . "/" . $_->basename
-#                      } $dir->children
-#                   } @obj_dirs;
-# 
-#     ($offset > $#objects or $offset+$count-1 > $#objects or
-#      $offset < 0 or $count < 0)
-#         and die ("Invalid slice " . $offset . ":" . ($offset+$count-1));
-# 
-#     @objects = @objects[$offset ... $offset+$count-1];
-#     say "[INFO] objects " . join "\n", @objects;
-# 
-#     my $config_file = $cfg{repos}->{$repo_name} . "/config";
-#     my $user_id = system "git config --file " . $config_file . " --get user.email";
-# 
-#     for my $obj (@objects) {
-#         my @obj_path = split /\//, $obj;
-#         my ($dir_hash, $file_hash) = @obj_path[-2, -1];
-#         print "$dir_hash:$file_hash\n";
-#         my $msg = GitP2P::Proto::Daemon::build_data("recv", 
-#             {'user_id' => $user_id,
-#              'type' => 'objects',
-#              'hash' => "$dir_hash$file_hash",
-#              'cnts' => path($obj)->slurp_raw
-#             });
-#         print "$msg\n";
-#         $sender->write($msg . "\n")
-#     }
-#     $sender->write("end\n");
-# }
-
 
 my $loop = IO::Async::Loop->new;
 
@@ -235,64 +171,3 @@ $loop->listen(
 
 
 $loop->run;
-
-
-=begin comment
-
-# Peer-to-peer prototype
-use Socket;
-
-
-# Receiver
-$|++;
-
-my $recv_port = 9000;
-my $recv_proto = getprotobyname("udp");
-
-socket(RECV, PF_INET, SOCK_DGRAM, $recv_proto) 
-    or die "recv socket: $!";
-select((select(RECV), $|=1)[0]);
-setsockopt(RECV, SOL_SOCKET, SO_REUSEADDR, 1)
-    or die "recv setsockopt: $!";
-my $broadcast_addr = sockaddr_in($recv_port, INADDR_ANY);
-bind(RECV, $broadcast_addr)
-    or die "recv bind: $!";
-
-if (fork() == 0) {
-    my $input;
-    while (my $addr = recv(RECV, $input, 18, 0)) {
-        print "$addr => $input\n";
-    }
-
-    exit;
-}
-
-# Sender
-my $send_proto = getprotobyname("udp");
-socket(SEND, PF_INET, SOCK_DGRAM, $send_proto)
-    or die "send socket: $!";
-select((select(SEND), $|=1)[0]);
-
-my $send_broad_addr = sockaddr_in(9000, INADDR_BROADCAST);
-setsockopt(SEND, SOL_SOCKET, SO_BROADCAST, 1);
-
-
-if (fork() == 0) {
-    while (1) {
-        send(SEND, "Hello from peer!", 0, $send_broad_addr)
-            or die "error at sending: $!";
-        sleep(10);
-    }
-    
-    exit;
-}
-
-
-wait();
-
-
-close RECV;
-close SEND;
-
-=end comment
-=cut
