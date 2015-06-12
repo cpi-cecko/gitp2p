@@ -15,6 +15,8 @@ use IO::Async::Stream;
 use IO::Async::Loop;
 use List::Util qw/reduce/;
 use List::MoreUtils qw/indexes/;
+use JSON::XS;
+use Data::Dumper;
 
 use GitP2P::Proto::Daemon;
 use GitP2P::Core::Common qw/unpack_packs/;
@@ -26,19 +28,17 @@ my %operations = ( "list"      => \&on_list,
                  , "fetch"     => \&on_fetch,
                  );
 
-# TODO: These absolute paths are not so good for configs
-my %cfg = ( repos => {
-                  "gitp2p" => "/media/files/PROJECTS/gitp2p/.git"
-                , "01-repo-one-file-master" => "/media/files/PROJECTS/gitp2p/t/testRepos/01-repo-one-file-master/.git"
-            }
-            , "port" => "47001"
-          );
+die "Usage: ./gitp2pd <cfg_path>"
+    if scalar @ARGV == 0;
+my $cfg_file = $ARGV[0];
+
+my $cfg = JSON::XS->new->ascii->decode(path($cfg_file)->slurp);
 
 
 # Lists refs for a given repo
 func on_list(Object $sender, GitP2P::Proto::Daemon $msg) {
     my $repo_name = $msg->op_data;
-    my $repo_refs_path = path($cfg{repos}->{$repo_name} . "/info/refs");
+    my $repo_refs_path = path($cfg->{repos}->{$repo_name} . "/info/refs");
     say "[INFO] Refs at " . $repo_refs_path->realpath;
 
     my $refs = $repo_refs_path->slurp;
@@ -87,7 +87,7 @@ func on_fetch(Object $sender, GitP2P::Proto::Daemon $msg) {
             and push @haves, $2;
     }
 
-    my $repo_obj = path($cfg{repos}->{$repo_name} . "/objects/");
+    my $repo_obj = path($cfg->{repos}->{$repo_name} . "/objects/");
     say "[INFO] repo " . $repo_obj->realpath;
 
     $repo_obj->child("pack")->exists
@@ -108,7 +108,7 @@ func on_fetch(Object $sender, GitP2P::Proto::Daemon $msg) {
     @objects = grep { defined $_ } @objects;
     say "[INFO] objects " . join "\n", @objects;
 
-    my $config_file = $cfg{repos}->{$repo_name} . "/config";
+    my $config_file = $cfg->{repos}->{$repo_name} . "/config";
     my $user_id = qx(git config --file $config_file --get user.email);
     say "[INFO] config: $config_file";
     say "[INFO] user id: $user_id";
@@ -133,7 +133,7 @@ func on_fetch(Object $sender, GitP2P::Proto::Daemon $msg) {
 my $loop = IO::Async::Loop->new;
 
 $loop->listen(
-    service => $cfg{port},
+    service => $cfg->{port},
     socktype => 'stream',
 
     on_stream => sub {
