@@ -30,7 +30,7 @@ my %operations = ( "list"      => \&on_list,
 
 # TODO: These absolute paths are not so good for configs
 my %cfg = ( repos => {
-                  "gitp2p" => "/media/files/PROJECTS/.git"
+                  "gitp2p" => "/media/files/PROJECTS/gitp2p/.git"
                 , "01-repo-one-file-master" => "/media/files/PROJECTS/gitp2p/t/testRepos/01-repo-one-file-master/.git"
             }
             , "port" => "47001"
