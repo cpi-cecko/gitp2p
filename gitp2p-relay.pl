@@ -16,6 +16,7 @@ use GitP2P::Proto::Relay;
 
 
 my %operations = ( "get-peers" => \&on_get_peers
+                 , "add-peer"  => \&on_add_peer
                  , "upload"    => \&on_upload
                  , "push"      => \&on_push 
                  , "fetch"     => \&on_fetch
@@ -23,6 +24,23 @@ my %operations = ( "get-peers" => \&on_get_peers
                  , "list"      => \&on_list
                  );
 
+
+func on_add_peer(Object $sender, Str $op_data) {
+    if ($op_data =~ /^(.*:.*)/) {
+        my $addr = $sender->read_handle->peerhost;
+        my $port = $sender->read_handle->peerport;
+        my $peer_entry = $1 . ' ^ ' . $addr . ':' . $port . "\n";
+        print "[INFO] Received entry: $peer_entry";
+
+        my $peers = path("peers");
+        if ($peers->exists && grep { /\Q$peer_entry\E/ } $peers->lines) {
+            $sender->write("NACK: already added\n");
+        } else {
+            $sender->write("ACK!\n");
+            $peers->append(($peer_entry));
+        }
+    }
+}
 
 func on_get_peers(Object $sender, Str $op_data) {
     if ($op_data =~ /^(.*):(.*)$/) {
@@ -44,8 +62,7 @@ func on_get_peers(Object $sender, Str $op_data) {
 
             print "[INFO] Sending " . (join ',', @peers_addr) . "\n";
             $sender->write((join ',', @peers_addr) . "\n");
-        }
-        else {
+        } else {
             print "[INFO] No peers\n";
             $sender->write("NACK: no peers\n");
         }

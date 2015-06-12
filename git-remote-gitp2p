@@ -114,7 +114,7 @@ func do_fetch(ArrayRef[Str] $refs) {
     my $out = `git show-ref 2>gitp2p.stderr`; # TODO: Check for error
     my @my_refs = split /\n/, $out;
     for (@$refs) {
-        warn "Getting wants";
+        warn $_;
         $_ =~ /^([a-f0-9]{40}).*$/;
         push @want, $1
             if not grep { $_ } @my_refs;
@@ -201,7 +201,6 @@ func do_fetch(ArrayRef[Str] $refs) {
         my $obj = <$pS>;
         chomp $obj;
         while ($obj !~ /^end$/) {
-            warn "receives $obj";
             my $parsed_obj = GitP2P::Proto::Daemon->new;
             $parsed_obj->parse($obj);
             my (undef, undef, $hash) = split /:/, $parsed_obj->op_info;
@@ -216,6 +215,23 @@ func do_fetch(ArrayRef[Str] $refs) {
         }
         close $pS;
     }
+
+    # Ugly hack which adds by hand the HEAD reference to .git/packed-refs
+    my $master_ref = (grep { $_ =~ qr(refs/heads/master$) } @$refs)[0];
+    system "echo $master_ref >> $repo/.git/packed-refs";
+
+    # TODO: Send message to relay to add us as a peer
+    my $me = `git config --get user.email`;
+    $relay_msg = GitP2P::Proto::Relay::build("add-peer", [$repo, $me]);
+
+    $s = GitP2P::Core::Finder::establish_connection($relay, $cfg);
+    $s->send($relay_msg);
+
+    $resp = <$s>;
+    chomp $resp;
+
+    warn "[INFO] Response: $resp";
+    close $s;
 }
 
 
