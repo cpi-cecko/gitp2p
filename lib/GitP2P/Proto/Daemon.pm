@@ -12,15 +12,20 @@ has 'op_info' => ('is' => 'rw', 'isa' => 'Str');
 has 'op_data' => ('is' => 'rw', 'isa' => 'Str');
 
 
+# Daemon protocol format ABNF
+# ===========================
+#
 # message   = type op_name SP data
+#
 # type      = d | c
 # op_name   = Str
-# data      = [ ops : ]               if type == c
-#           | user_id SP data_type SP hash SP cnts if type == d
+# data      = (1*ops)                                if type == c
+#           / (user_id SP data_type SP hash SP cnts) if type == d
+#
 # user_id   = Str
 # data_type = Str
-# hash      = Str
-# cnts      = Str_base64
+# hash      = obj-id
+# cnts      = *base64_Chr
 
 # TODO: Make the param a ref
 # TODO: Split in two, separate protocols

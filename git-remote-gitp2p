@@ -163,6 +163,8 @@ func do_fetch(ArrayRef[Str] $refs) {
         my $peer_packet = GitP2P::Proto::Packet->new;
 
         # pkt_line format ABNF
+        # ====================
+        #
         # message = repo NL id NL *wants *haves
         #
         # repo = "repo" SP user_id SP repo_name
