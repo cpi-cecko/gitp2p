@@ -10,6 +10,13 @@ has 'op_name' => ('is' => 'rw', 'isa' => 'Str');
 has 'op_data' => ('is' => 'rw', 'isa' => 'Str');
 
 
+# relay protocol format ABNF
+#
+# message = op-name SP op-data
+#
+# op-name = *("_" "a"."z" "A"."Z")
+# op-data = *(ALNUM ":")
+
 method parse(Str $data) {
     my ($op_name, $op_data) = split / /, $data;
     $self->op_name($op_name);

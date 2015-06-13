@@ -17,10 +17,10 @@ has 'op_data' => ('is' => 'rw', 'isa' => 'Str');
 #
 # message   = type op_name SP data
 #
-# type      = d | c
+# type      = d / c
 # op_name   = Str
-# data      = (1*ops)                                if type == c
-#           / (user_id SP data_type SP hash SP cnts) if type == d
+# data      = (1*(ops ":"))                          ; type == c
+#           / (user_id SP data_type SP hash SP cnts) ; type == d
 #
 # user_id   = Str
 # data_type = Str
