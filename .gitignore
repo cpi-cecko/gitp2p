@@ -26,3 +26,8 @@ gitp2p-config
 
 gitp2pd.log
 gitp2pd.pid
+
+docs/*.log
+docs/*.aux
+docs/*.out
+docs/*.pdf
