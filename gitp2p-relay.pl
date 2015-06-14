@@ -59,7 +59,7 @@ func on_get_peers(Object $sender, Str $op_data) {
             $sender->write((join ',', @peers_addr) . "\n");
         } else {
             print "[INFO] No peers\n";
-            $sender->write("NACK: no peers\n");
+            $sender->write("NACK: no peers file found\n");
         }
     }
 }

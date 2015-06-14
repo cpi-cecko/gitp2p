@@ -50,13 +50,11 @@ func do_capabilities() {
 }
 
 func do_list() {
-    my $relay = GitP2P::Core::Finder::get_relay("gitp2p-config");
-    my $s = GitP2P::Core::Finder::establish_connection($relay, $cfg);
-
     my ($owner, $repo) = get_repo_info($url);
-
     my $msg = GitP2P::Proto::Relay::build("get-peers", [$repo, $owner]);
 
+    my $relay = GitP2P::Core::Finder::get_relay("gitp2p-config");
+    my $s = GitP2P::Core::Finder::establish_connection($relay, $cfg);
     $s->send($msg);
 
     my $resp = <$s>;
@@ -71,7 +69,6 @@ func do_list() {
 
     my $list_msg = GitP2P::Proto::Daemon::build_comm("list", [$repo]);
     my $pS = GitP2P::Core::Finder::establish_connection($peers[0], $cfg);
-
     $pS->send($list_msg);
     
     $resp = <$pS>;
@@ -167,7 +164,6 @@ func do_fetch(ArrayRef[Str] $refs) {
         $peer_packet->append(\$packet);
 
         #my $hexed = join "", map { sprintf "%02x", ord $_ } split //, $peer_packet->to_send;
-        warn $peer_packet->to_send;
         my $pS = GitP2P::Core::Finder::establish_connection($peer, $cfg);
         my $pack = GitP2P::Proto::Daemon::build_data(
               "fetch", { 'user_id' => "dummy", 
