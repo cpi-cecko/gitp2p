@@ -8,15 +8,15 @@
 #
 # message = header SP op-name SP op-data
 #
-# header = version
+# header  = version
 # op-name = *("_" "a"."z" "A"."Z")
 # op-data = *(ALNUM ":")
 #
 # version = major "." minor "." patch ["." meta]
-# major = *DIGIT
-# minor = *DIGIT
-# pathc = *DIGIT
-# mata = *ALNUM . "-" . "."
+# major   = *DIGIT
+# minor   = *DIGIT
+# patch   = *DIGIT
+# meta    = *(ALNUM / "-" / ".")
 #
 package GitP2P::Proto::Relay;
 
@@ -36,7 +36,8 @@ has 'version' => ('is' => 'rw', 'isa' => 'Str');
 method parse(Str $data) {
     my ($version, $op_name, $op_data) = split / /, $data;
 
-    die ("Incompatible version") if $version ne $VERSION;
+    die "Incompatible version $version"
+        if $version ne $VERSION;
 
     $self->version($version);
     $self->op_name($op_name);
