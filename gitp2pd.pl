@@ -64,13 +64,8 @@ func on_list(Object $sender, GitP2P::Proto::Daemon $msg) {
 
 # Returns wanted object by client
 func on_fetch(Object $sender, GitP2P::Proto::Daemon $msg) { 
-    # print "[INFO] $msg->op_data";
-
     my $objects = $msg->op_data;
 
-    # print "[INFO] $objects";
-    # my $hexed = join "", map { sprintf "%02x", ord $_ } split //, $objects;
-    # print "[INFO] $hexed";
     my ($repo, $id, @rest) = split /\n/, $objects;
     # TODO: Validate repo line
     my (undef, $repo_name, $repo_owner) = split / /, $repo;
@@ -117,6 +112,7 @@ func on_fetch(Object $sender, GitP2P::Proto::Daemon $msg) {
         my @obj_path = split /\//, $obj;
         my ($dir_hash, $file_hash) = @obj_path[-2, -1];
         print "$dir_hash:$file_hash\n";
+
         my $msg = GitP2P::Proto::Daemon::build_data("recv", 
             {'user_id' => $user_id,
              'type' => 'objects',
