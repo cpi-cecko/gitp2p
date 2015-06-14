@@ -23,6 +23,7 @@ nytprof.out
 # gitp2p specific files
 peers
 gitp2p-config
+daemon-cfg
 
 gitp2pd.log
 gitp2pd.pid
@@ -31,3 +32,5 @@ docs/*.log
 docs/*.aux
 docs/*.out
 docs/*.pdf
+
+t/testRepos/
