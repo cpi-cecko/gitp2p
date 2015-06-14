@@ -1,3 +1,21 @@
+#
+# The packet protocol just represents a format for sending git objects ids 
+# through the net. It's a sub-protocol in the sense that it gets embeded in
+# a data-daemon protocol.
+#
+# pkt_line format ABNF
+# ====================
+#
+# message = repo NL id NL *wants *haves
+#
+# repo = "repo" SP user_id SP repo_name
+# id = "id" SP 1*DIGIT SP 1*DIGIT
+# wants = "want" SP obj-id NL
+# haves = "have" SP obj-id NL
+#
+# user_id = *ALNUM
+# repo_name = *ALNUM
+#
 package GitP2P::Proto::Packet;
 
 use v5.020;

@@ -162,18 +162,6 @@ func do_fetch(ArrayRef[Str] $refs) {
     for my $peer (@peers) {
         my $peer_packet = GitP2P::Proto::Packet->new;
 
-        # pkt_line format ABNF
-        # ====================
-        #
-        # message = repo NL id NL *wants *haves
-        #
-        # repo = "repo" SP user_id SP repo_name
-        # id = "id" SP 1*DIGIT SP 1*DIGIT
-        # wants = "want" SP obj-id NL
-        # haves = "have" SP obj-id NL
-        #
-        # user_id = *ALNUM
-        # repo_name = *ALNUM
         $peer_packet->write("repo $repo $owner");
         $peer_packet->write("id $id " . scalar @peers);
         $peer_packet->append(\$packet);
