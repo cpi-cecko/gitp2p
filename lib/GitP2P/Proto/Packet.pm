@@ -2,6 +2,8 @@
 # The packet protocol just represents a format for sending git objects ids 
 # through the net. It's a sub-protocol in the sense that it gets embeded in
 # a data-daemon protocol.
+# Currently, it doesn't need any versioning because we just parse the contents
+# as they are.
 #
 # pkt_line format ABNF
 # ====================
