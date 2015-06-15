@@ -14,3 +14,22 @@ Current:
 2. Torrent tracker web interface
 3. Repo for signed docs
 4. Don't unpack packs!
+5. Handshake before connections
+6. Handle alternatives
+7. After discovery of the initial network peer, we should be able to rely on
+   peers instead of a relay.
+8. Trusted updates of branches and tags
+9. Uniquely identifiable repositories
+10. Object transfer
+    - Pack files limited in size, generated on-the-fly
+    - Big objects
+    - Advertising list of available pack files and determining what a peer 
+      needs
+11. Cloning a repo while peer has a partial info about it
+12. Prioritize rare pieces
+13. Metainfo file
+14. Make the relay just a peer? A peer could opt for being a relay via some
+    config file. Each relay-peer could have some kind of trust points.
+15. Tool to collect statistics about the network - repos, active peers, etc.
+16. Peer impersonation exploit
+17. Pruning inactive peers
