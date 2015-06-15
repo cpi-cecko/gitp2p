@@ -1,3 +1,16 @@
+Current:
+1. Heartbeating:
+    -- Between relay and peers
+    -- Between peers during fetch
+2. Data determination algorithm
+    -- What happens when a peer dies during transfer?
+3. Go through TODOs
+4. Testing of fetch functionality
+    -- By hand
+    -- Using a test suite
+
+-------------------------------------------------------------------------------
 1. gitp2p-config gets moved a lot
 2. Torrent tracker web interface
 3. Repo for signed docs
+4. Don't unpack packs!
