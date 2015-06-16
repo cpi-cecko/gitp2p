@@ -19,7 +19,7 @@ use JSON::XS;
 use Data::Dumper;
 
 use GitP2P::Proto::Daemon;
-use GitP2P::Core::Common qw/unpack_packs/;
+use GitP2P::Core::Common;
 
 use App::Daemon qw/daemonize/;
 daemonize();
@@ -82,46 +82,30 @@ func on_fetch(Object $sender, GitP2P::Proto::Daemon $msg) {
             and push @haves, $2;
     }
 
-    my $repo_obj = path($cfg->{repos}->{$repo_name} . "/objects/");
-    say "[INFO] repo " . $repo_obj->realpath;
-
-    $repo_obj->child("pack")->exists
-        and $repo_obj->child("pack")->children
-            and GitP2P::Core::Common::unpack_packs($repo_obj->child("pack"), $repo_obj);
-
-    my @obj_dirs = $repo_obj->children(qr/^[a-f0-9]{2}/);
-    my @objects = map { 
-                     my $dir = $_;
-                     map { 
-                         $dir->absolute . "/" . $_->basename
-                     } $dir->children
-                  } @obj_dirs;
+    my $repo_path = $cfg->{repos}->{$repo_name} . "/../";
+    my @objects = GitP2P::Core::Common::list_objects($repo_path);
+    say "[INFO] $repo_path";
 
     # TODO: Use wants and haves properly
     # Get every $step-th object beggining from $beg
     @objects = @objects[map { $_ += $beg } indexes { $_ % $step == 0 } (0..$#objects)];
     @objects = grep { defined $_ } @objects;
-    say "[INFO] objects " . join "\n", @objects;
+    say "[INFO] objects " . join "", @objects;
 
     my $config_file = $cfg->{repos}->{$repo_name} . "/config";
     my $user_id = qx(git config --file $config_file --get user.email);
-    say "[INFO] config: $config_file";
-    say "[INFO] user id: $user_id";
 
-    for my $obj (@objects) {
-        my @obj_path = split /\//, $obj;
-        my ($dir_hash, $file_hash) = @obj_path[-2, -1];
-        print "$dir_hash:$file_hash\n";
+    my $pack_data = GitP2P::Core::Common::create_pack_from_list(\@objects, $repo_path);
+    say "[INFO] pack_data: '$pack_data'";
 
-        my $msg = GitP2P::Proto::Daemon::build_data("recv", 
-            {'user_id' => $user_id,
-             'type' => 'objects',
-             'hash' => "$dir_hash$file_hash",
-             'cnts' => path($obj)->slurp_raw
-            });
-        print "$msg\n";
-        $sender->write($msg . "\n")
-    }
+    my $pack_msg = GitP2P::Proto::Daemon::build_data("recv",
+        { 'user_id' => $user_id,
+          'type' => 'pack',
+          'hash' => 'dummy',
+          'cnts' => $pack_data
+        });
+    print $pack_msg;
+    $sender->write($pack_msg . "\n");
     $sender->write("end\n");
 }
 

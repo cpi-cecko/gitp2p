@@ -3,7 +3,7 @@
 
 use strict;
 use warnings;
-use v5.20;
+use v5.020;
 
 use FindBin;
 use lib "$FindBin::Bin/lib";
@@ -14,12 +14,13 @@ use Method::Signatures;
 use Path::Tiny;
 use IO::Socket::INET;
 use Data::Dumper;
+use IPC::Open2;
 
 use GitP2P::Proto::Relay;
 use GitP2P::Proto::Daemon;
 use GitP2P::Proto::Packet;
 use GitP2P::Core::Finder;
-use GitP2P::Core::Common qw/unpack_objects/;
+use GitP2P::Core::Common;
 
 
 my $cfg = "";
@@ -91,7 +92,7 @@ func do_list() {
 
 func get_wants(ArrayRef[Str] $refs) {
     my @want;
-    my $out = `git show-ref 2>gitp2p.stderr`; # TODO: Check for error
+    my $out = `git show-ref`;
     my @my_refs = split /\n/, $out;
     for (@$refs) {
         warn $_;
@@ -104,30 +105,7 @@ func get_wants(ArrayRef[Str] $refs) {
 }
 
 func get_haves(ArrayRef[Str] $refs) {
-    my @have;
-    # Runs git-unpack-objects because we currently don't know how to do unpack
-    # by hand
-    # TODO: Finding the .git repo is not so simple
-    my $repo_root = path("./.git");
-    if ($repo_root->exists) {
-        warn "Getting haves";
-        my $obj_dir = $repo_root->child("objects/pack");
-        $obj_dir->child("pack")->exists
-            and $repo_root->child("pack")->children
-                and unpack_packs($repo_root->child("pack"), $obj_dir);
-
-        my @obj_parents = $obj_dir->children(qr/^\d\d/);
-        my @objects = map {
-                        my $dir = $_;
-                        map {
-                            $dir->absolute . "/" . $_->basename;
-                        } $dir->children;
-                      } @obj_parents;
-
-        @have = @objects;
-    }
-
-    return @have;
+    GitP2P::Core::Common::list_objects("./");
 }
 
 func do_fetch(ArrayRef[Str] $refs) {
@@ -198,10 +176,13 @@ func do_fetch(ArrayRef[Str] $refs) {
             $parsed_obj->parse($obj);
             my (undef, undef, $hash) = split /:/, $parsed_obj->op_info;
             my $cnts = $parsed_obj->op_data;
-
-            my ($dir, $file) = (substr($hash, 0, 2), substr($hash, 2));
-            my $obj_path = path("$repo/.git/objects/$dir/$file")->touchpath;
-            $obj_path->spew({binmode => ":raw"}, ($cnts));
+            
+            my $pid = open2(\*CHLD_OUT, \*CHLD_IN, 
+                "git", "index-pack", "-v", "--stdin", "--fix-thin", "--keep");
+            print CHLD_IN $cnts;
+            while (<CHLD_OUT>) {
+                warn "git-index-pack: $_";
+            }
 
             $obj = <$pS>;
         }
@@ -213,17 +194,18 @@ func do_fetch(ArrayRef[Str] $refs) {
     system "echo $master_ref >> $repo/.git/packed-refs";
 
     # Sends message to the relay to add us as a peer
-    my $me = `git config --get user.email`;
-    $relay_msg = GitP2P::Proto::Relay::build("add-peer", [$repo, $me]);
+    # TODO: Check if everything was ok. Only then send message to relay.
+    # my $me = `git config --get user.email`;
+    # $relay_msg = GitP2P::Proto::Relay::build("add-peer", [$repo, $me]);
 
-    $s = GitP2P::Core::Finder::establish_connection($relay, $cfg);
-    $s->send($relay_msg);
+    # $s = GitP2P::Core::Finder::establish_connection($relay, $cfg);
+    # $s->send($relay_msg);
 
-    $resp = <$s>;
-    chomp $resp;
+    # $resp = <$s>;
+    # chomp $resp;
 
-    warn "[INFO] Response: $resp";
-    close $s;
+    # warn "[INFO] Response: $resp";
+    # close $s;
 }
 
 

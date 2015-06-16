@@ -8,7 +8,32 @@ use v5.020;
 use Path::Tiny;
 use Method::Signatures;
 use File::Copy;
+use File::Temp qw/tempfile/;
+use File::pushd; # I love dirs ^_^
+use IPC::Open2;
 
+
+func list_objects(Str $git_dir) {
+    my $abs_path = path($git_dir)->absolute . "/";
+
+    my $dir = pushd $abs_path;
+    my @objects = qx(git rev-list --objects --all);
+
+    map { $_ =~ s/^([a-f0-9]{40}).*$/$1/ } @objects;
+
+    return @objects;
+}
+
+func create_pack_from_list(ArrayRef[Str] $objects, Str $git_dir) {
+    my ($tfh, $tname) = tempfile;
+    print $tfh join "", @$objects;
+
+    my $abs_path = path($git_dir)->absolute . "/";
+    my $dir = pushd $abs_path; 
+    my $packed = qx(git pack-objects --stdout <$tname);
+
+    return $packed;
+}
 
 func unpack_packs(Object $pack_dir, Object $repo_obj_dir) {
     # `git unpack-objects` doesn't care about bare repositories
