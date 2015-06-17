@@ -11,13 +11,18 @@ use Path::Tiny;
 use Method::Signatures;
 use IO::Async::Stream;
 use IO::Async::Loop;
+use IO::Select;
 
 use GitP2P::Proto::Relay;
+use GitP2P::Proto::Daemon;
+use GitP2P::Core::Finder;
 
 
 my %operations = ( "get-peers" => \&on_get_peers
                  , "add-peer"  => \&on_add_peer
                  );
+# TODO: Get from config
+my $local_port = "12500";
 
 
 func on_add_peer(Object $sender, Str $op_data) {
@@ -50,6 +55,8 @@ func on_get_peers(Object $sender, Str $op_data) {
                     push @peers_addr, $1;
                 }
             }
+
+            @peers_addr = get_hugged_peers(\@peers_addr);
             scalar @peers_addr == 0
                 and print "[INFO] No peers for repo\n"
                     and $sender->write("NACK: no peers for repo\n") 
@@ -64,12 +71,32 @@ func on_get_peers(Object $sender, Str $op_data) {
     }
 }
 
+func get_hugged_peers(ArrayRef[Str] $peer_addresses) {
+    my $pSelect = IO::Select->new;
+    for (@$peer_addresses) {
+        my $daemon_local_port = "12501";
+        my $pS = GitP2P::Core::Finder::establish_connection($_, $daemon_local_port);
+        next if $pS == 0;
+        my $hugz = GitP2P::Proto::Daemon::build_comm("hugz", [""]); 
+        $pS->send($hugz . "\n");
+        $pSelect->add($pS);
+    }
+
+    return () unless $pSelect->count;
+
+    my $TIMEOUT_SECS = 3;
+    my @hugged_handles = $pSelect->can_read($TIMEOUT_SECS);
+    # TODO: Check if the response is "hugz-back"
+    my @hugged = map { $_->peerhost . ":" . $_->peerport } @hugged_handles;
+    return @hugged;
+}
+
 
 my $loop = IO::Async::Loop->new;
 
 # TODO: Query other relays if no info here
 $loop->listen(
-    service => "12345",
+    service => $local_port,
     socktype => 'stream',
 
     on_stream => sub {

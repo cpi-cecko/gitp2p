@@ -2,7 +2,7 @@
 
 use strict;
 use warnings;
-use v5.20;
+use v5.020;
 
 
 use FindBin;
@@ -24,8 +24,9 @@ use GitP2P::Core::Common;
 use App::Daemon qw/daemonize/;
 daemonize();
 
-my %operations = ( "list"      => \&on_list,
-                 , "fetch"     => \&on_fetch,
+my %operations = ( "list"  => \&on_list,
+                 , "fetch" => \&on_fetch,
+                 , "hugz"  => \&on_hugz,
                  );
 
 die "Usage: ./gitp2pd <cfg_path>"
@@ -107,6 +108,13 @@ func on_fetch(Object $sender, GitP2P::Proto::Daemon $msg) {
     print $pack_msg;
     $sender->write($pack_msg . "\n");
     $sender->write("end\n");
+}
+
+# Answers to a heartbeat
+func on_hugz(Object $sender, GitP2P::Proto::Daemon $msg) {
+    my $hugz_back = GitP2P::Proto::Daemon::build_comm("hugz-back", [""]);
+    sleep $cfg->{debug_sleep} if exists $cfg->{debug_sleep};
+    $sender->write($hugz_back . "\n");
 }
 
 

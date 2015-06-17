@@ -18,14 +18,29 @@ func get_relay(Str $config_file_name is ro) {
 
 func establish_connection(Str $address, Str $cfg) {
     my $local_port = 47778;
-    $local_port = int ((path($cfg)->lines({chomp=>1}))[0]) if $cfg ne "";
+    if ($cfg ne "" && path($cfg)->exists) {
+        $local_port = int ((path($cfg)->lines({chomp=>1}))[0]);
+    } 
+    elsif ($cfg ne "") {
+        $local_port = int $cfg;
+    }
+    warn "Addr: $address; local_port: $local_port\n";
     my $s = IO::Socket::INET->new(PeerAddr => $address,
                                   LocalPort => $local_port,
                                   ReuseAddr => SO_REUSEADDR,
                                   ReusePort => SO_REUSEPORT,
-                                  Proto => 'tcp')
-                             or die "Cannot create connection";
-    return $s;
+                                  Proto => 'tcp');
+    return ($s or handle_failure($!));
+}
+
+sub handle_failure($) {
+    my $err = shift;
+    # return 0
+    #     if $err =~ /Connection refused/;
+
+    # TODO: Fix error handling
+    warn "Cannot create socket: $!";
+    return 0;
 }
 
 
