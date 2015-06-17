@@ -30,6 +30,7 @@ func establish_connection(Str $address, Str $cfg) {
                                   ReuseAddr => SO_REUSEADDR,
                                   ReusePort => SO_REUSEPORT,
                                   Proto => 'tcp');
+    # Reminder: Handling failures should be easier than rocket-science
     return ($s or handle_failure($!));
 }
 
