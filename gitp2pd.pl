@@ -40,6 +40,10 @@ my $cfg = JSON::XS->new->ascii->decode(path($cfg_file)->slurp);
 func on_list(Object $sender, GitP2P::Proto::Daemon $msg) {
     my $repo_name = $msg->op_data;
     my $repo_refs_path = path($cfg->{repos}->{$repo_name} . "/info/refs");
+    $repo_refs_path = path($cfg->{repos}->{$repo_name} . "/packed-refs") 
+        unless $repo_refs_path->exists;
+    die "No refs!" unless $repo_refs_path->exists;
+
     say "[INFO] Refs at " . $repo_refs_path->realpath;
 
     my $refs = $repo_refs_path->slurp;
