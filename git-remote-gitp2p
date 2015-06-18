@@ -154,70 +154,10 @@ func do_fetch(ArrayRef[Str] $refs) {
     die "Bad resp: '$resp'"
         if ($resp =~ /^NACK/);
 
-    my @want = get_wants($refs);
-    warn "Wants: " . scalar @want;
-    my $packet = GitP2P::Proto::Packet->new;
-    for (@want) {
-        $packet->write("want $_");
-    }
+    my $packet = create_objects_packet($refs);
 
-    my @have = get_haves($refs);
-    warn "Haves: " . scalar @have;
-    for (@have) {
-        $packet->write("have $_");
-    }
-
-    # TODO: Handle dead peers
-    # Send desires
     my @peers = split /,/, $resp;
-    my %peer_info;
-    my $id = 0; # Used to determine what each pear will send
-    for my $peer (@peers) {
-        my $peer_packet = GitP2P::Proto::Packet->new;
-
-        $peer_packet->write("repo $repo $owner");
-        $peer_packet->write("id $id " . scalar @peers);
-        $peer_packet->append(\$packet);
-
-        my $pS = GitP2P::Core::Finder::establish_connection($peer, $cfg);
-        my $pack = GitP2P::Proto::Daemon::build_data(
-              "fetch", { 'user_id' => "dummy", 
-                         'type' => "pkt_line",
-                         'hash' => "dummy",
-                         'cnts' => $peer_packet->to_send});
-        warn $pack;
-        $pS->send($pack); 
-
-        $peer_info{$peer} = { id => $id
-                            , sock => $pS
-                            };
-
-        $id++;
-    }
-
-    # Receives objects
-    for my $peer (@peers) {
-        # TODO: Fork
-        my $pS = $peer_info{$peer}->{sock};
-        my $obj = <$pS>;
-        chomp $obj;
-        while ($obj !~ /^end$/) {
-            my $parsed_obj = GitP2P::Proto::Daemon->new;
-            $parsed_obj->parse($obj);
-            my (undef, undef, $hash) = split /:/, $parsed_obj->op_info;
-            my $cnts = $parsed_obj->op_data;
-            
-            my $pid = open2(\*CHLD_OUT, \*CHLD_IN, 
-                "git", "index-pack", "-v", "--stdin", "--fix-thin", "--keep");
-            print CHLD_IN $cnts;
-            while (<CHLD_OUT>) {
-                warn "git-index-pack: $_";
-            }
-
-            $obj = <$pS>;
-        }
-        close $pS;
-    }
+    receive_objects(\@peers, $repo, $owner, $packet, $refs);
 
     # Ugly hack which adds by hand the HEAD reference to .git/packed-refs
     my $master_ref = (grep { $_ =~ qr(refs/heads/master$) } @$refs)[0];
@@ -236,6 +176,67 @@ func do_fetch(ArrayRef[Str] $refs) {
 
     # warn "[INFO] Response: $resp";
     # close $s;
+}
+
+func receive_objects(ArrayRef[Str] $peers, Str $repo, Str $owner, 
+                     GitP2P::Proto::Packet $packet, ArrayRef[Str] $refs) {
+    my $pSelect = IO::Select->new;
+
+    # Send desires
+    my $id = 0; # Used to determine what each pear will send
+    for my $peer (@$peers) {
+        my $peer_packet = GitP2P::Proto::Packet->new;
+
+        $peer_packet->write("repo $repo $owner");
+        $peer_packet->write("id $id " . scalar @$peers);
+        $peer_packet->append(\$packet);
+
+        # TODO: What if we can't establish a connection?
+        my $pS = GitP2P::Core::Finder::establish_connection($peer, $cfg);
+        $pSelect->add($pS);
+        my $pack = GitP2P::Proto::Daemon::build_data(
+              "fetch", { 'user_id' => "dummy", 
+                         'type' => "pkt_line",
+                         'hash' => "dummy",
+                         'cnts' => $peer_packet->to_send});
+        warn $pack;
+        $pS->send($pack); 
+
+        $id++;
+    }
+
+    my $TIMEOUT_SECS = 3;
+    my @available_peers;
+    while (my @ready = $pSelect->can_read($TIMEOUT_SECS)) {
+        for my $peer (@ready) {
+            my $obj = <$peer>;
+            chomp $obj;
+            while ($obj !~ /^end$/) {
+                my $parsed_obj = GitP2P::Proto::Daemon->new;
+                $parsed_obj->parse($obj);
+                my $cnts = $parsed_obj->op_data;
+                
+                my $pid = open2(\*CHLD_OUT, \*CHLD_IN, 
+                    "git", "index-pack", "-v", "--stdin", "--fix-thin", "--keep");
+                print CHLD_IN $cnts;
+                while (<CHLD_OUT>) {
+                    warn "git-index-pack: $_";
+                }
+
+                $obj = <$peer>;
+            }
+            push @available_peers, $peer->peerhost . ":" . $peer->peerport;
+            $pSelect->remove($peer);
+            $peer->close;
+        }
+    }
+
+    # TODO: Should we also check whether we have all objects?
+    return unless $pSelect->count;
+
+    # Retry in order to get the rest of the objects
+    my $remaining_packet = create_objects_packet($refs);
+    receive_objects(\@available_peers, $repo, $owner, $remaining_packet, $refs);
 }
 
 
