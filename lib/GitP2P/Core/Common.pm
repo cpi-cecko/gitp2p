@@ -17,9 +17,28 @@ func list_objects(Str $git_dir) {
     my $abs_path = path($git_dir)->absolute . "/";
 
     my $dir = pushd $abs_path;
-    my @objects = qx(git rev-list --objects --all);
 
+    # Intertwined foo and magic to get *all* objects in a git repo
+    # credits: http://stackoverflow.com/a/7350019
+    my @reachable = qx(git rev-list --objects --all);
+    my @reachable_ref_logs = qx(git rev-list --objects -g --no-walk --all);
+
+    my @bad_objects = qx(git fsck --unreachable);
+    # TODO: Maybe we only need to check for dangling objects
+    my @unreachable = grep { /^unreachable commit/ } @bad_objects;
+    my @missing = grep { /^missing/ } @bad_objects;
+    my @dangling = grep { /^dangling/ } @bad_objects;
+    
+    my @broken_obj_ids = map { (split / /, $_)[2] } @unreachable;
+    @broken_obj_ids = (@broken_obj_ids, map { (split / /, $_)[2] } @missing);
+    @broken_obj_ids = (@broken_obj_ids, map { (split / /, $_)[2] } @dangling);
+
+    my @objects = (@reachable, @reachable_ref_logs, @broken_obj_ids);
     map { $_ =~ s/^([a-f0-9]{40}).*$/$1/ } @objects;
+
+    # warn "\n\nReachable: @reachable\nRef logs: @reachable_ref_logs\n" .
+    #      "unreachable: @unreachable\nmissing: @missing\nBad: @bad_objects\n" .
+    #      "Objects: @objects\n\n";
 
     return @objects;
 }

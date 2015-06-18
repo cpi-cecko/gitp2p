@@ -22,6 +22,7 @@ use lib "$FindBin::Bin/lib";
 use GitP2P::Core::Common;
 
 my @objects = GitP2P::Core::Common::list_objects("./");
+print @objects;
 
-my $packed = GitP2P::Core::Common::create_pack_from_list(\@objects, "./");
-print $packed . "\n";
+# my $packed = GitP2P::Core::Common::create_pack_from_list(\@objects, "./");
+# print $packed . "\n";
