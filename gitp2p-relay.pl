@@ -84,9 +84,12 @@ func get_hugged_peers(ArrayRef[Str] $peer_addresses) {
 
     return () unless $pSelect->count;
 
+    my @hugged_handles;
     my $TIMEOUT_SECS = 3;
-    my @hugged_handles = $pSelect->can_read($TIMEOUT_SECS);
-    # TODO: Check if the response is "hugz-back"
+    while (my @ready = $pSelect->can_read($TIMEOUT_SECS)) {
+        @hugged_handles = (@hugged_handles, @ready);
+        map { $pSelect->remove($_) } @ready;
+    }
     my @hugged = map { $_->peerhost . ":" . $_->peerport } @hugged_handles;
     return @hugged;
 }
