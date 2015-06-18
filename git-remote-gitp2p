@@ -13,8 +13,10 @@ use Pod::Usage;
 use Method::Signatures;
 use Path::Tiny;
 use IO::Socket::INET;
+use IO::Select;
 use Data::Dumper;
 use IPC::Open2;
+use File::pushd;
 
 use GitP2P::Proto::Relay;
 use GitP2P::Proto::Daemon;
@@ -90,9 +92,13 @@ func do_list() {
     echo_empty;
 }
 
-func get_wants(ArrayRef[Str] $refs) {
+func get_wants(ArrayRef[Str] $refs, Str $repo_dir) {
     my @want;
-    my $out = `git show-ref`;
+    my $out;
+    {
+        my $dir = pushd "./$repo_dir";
+        $out = `git show-ref`;
+    }
     my @my_refs = split /\n/, $out;
     for (@$refs) {
         warn $_;
@@ -104,8 +110,32 @@ func get_wants(ArrayRef[Str] $refs) {
     return @want;
 }
 
-func get_haves(ArrayRef[Str] $refs) {
-    GitP2P::Core::Common::list_objects("./");
+func get_haves(Str $repo_dir) {
+    GitP2P::Core::Common::list_objects("./$repo_dir");
+}
+
+func create_objects_packet(ArrayRef[Str] $refs) {
+    my $repo_dir;
+    if (path(".git")->exists) {
+        $repo_dir = "/";
+    } else {
+        (undef, $repo_dir) = get_repo_info($url);
+    }
+
+    my @want = get_wants($refs, $repo_dir);
+    warn "Wants: " . scalar @want;
+    my $packet = GitP2P::Proto::Packet->new;
+    for (@want) {
+        $packet->write("want $_");
+    }
+
+    my @have = get_haves($repo_dir);
+    warn "Haves: " . scalar @have;
+    for (@have) {
+        $packet->write("have $_");
+    }
+
+    return $packet;
 }
 
 func do_fetch(ArrayRef[Str] $refs) {
