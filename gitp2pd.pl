@@ -80,22 +80,25 @@ func on_fetch(Object $sender, GitP2P::Proto::Daemon $msg) {
     my @wants;
     my @haves;
     for my $pkt_line (@rest) {
-        $pkt_line =~ /^(\w+)\s([a-f0-9]{40})\n?$/;
-        $1 eq "want"
-            and push @wants, $2;
-        $1 eq "have"
-            and push @haves, $2;
+        if ($pkt_line =~ /^(\w+)\s([a-f0-9]{40})\n?$/) {
+            $1 eq "want"
+                and push @wants, $2;
+            $1 eq "have"
+                and push @haves, $2;
+        }
     }
 
     my $repo_path = $cfg->{repos}->{$repo_name} . "/../";
     my @objects = GitP2P::Core::Common::list_objects($repo_path);
-    say "[INFO] $repo_path";
+    for my $have (@haves) { # Hacking my way through life
+        @objects = grep { $_ !~ /^$have/ } @objects;
+    }
 
     # TODO: Use wants and haves properly
     # Get every $step-th object beggining from $beg
     @objects = @objects[map { $_ += $beg } indexes { $_ % $step == 0 } (0..$#objects)];
     @objects = grep { defined $_ } @objects;
-    say "[INFO] objects " . join "", @objects;
+    say "[INFO] objects \n" . join "", @objects;
 
     my $config_file = $cfg->{repos}->{$repo_name} . "/config";
     my $user_id = qx(git config --file $config_file --get user.email);
@@ -109,7 +112,7 @@ func on_fetch(Object $sender, GitP2P::Proto::Daemon $msg) {
           'hash' => 'dummy',
           'cnts' => $pack_data
         });
-    print $pack_msg;
+    sleep $cfg->{debug_sleep} if exists $cfg->{debug_sleep};
     $sender->write($pack_msg . "\n");
     $sender->write("end\n");
 }
@@ -117,7 +120,7 @@ func on_fetch(Object $sender, GitP2P::Proto::Daemon $msg) {
 # Answers to a heartbeat
 func on_hugz(Object $sender, GitP2P::Proto::Daemon $msg) {
     my $hugz_back = GitP2P::Proto::Daemon::build_comm("hugz-back", [""]);
-    sleep $cfg->{debug_sleep} if exists $cfg->{debug_sleep};
+    # sleep $cfg->{debug_sleep} if exists $cfg->{debug_sleep};
     $sender->write($hugz_back . "\n");
 }
 
