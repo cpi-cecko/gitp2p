@@ -84,7 +84,7 @@ func do_list() {
     close $pS;
 
     my $refs = GitP2P::Proto::Daemon->new;
-    $refs->parse($resp);
+    $refs->parse(\$resp);
 
     my $cnts = $refs->op_data;
 
@@ -198,10 +198,7 @@ func receive_objects(ArrayRef[Str] $peers, Str $repo, Str $owner,
         my $pS = GitP2P::Core::Finder::establish_connection($peer, \$cfg);
         $pSelect->add($pS);
         my $pack = GitP2P::Proto::Daemon::build_data(
-              "fetch", { 'user_id' => "dummy", 
-                         'type' => "pkt_line",
-                         'hash' => "dummy",
-                         'cnts' => $peer_packet->to_send});
+              "fetch_pkt_line", \$peer_packet->to_send);
         warn $pack;
         $pS->send($pack); 
 
@@ -216,7 +213,7 @@ func receive_objects(ArrayRef[Str] $peers, Str $repo, Str $owner,
             chomp $obj;
             while ($obj !~ /^end$/) {
                 my $parsed_obj = GitP2P::Proto::Daemon->new;
-                $parsed_obj->parse($obj);
+                $parsed_obj->parse(\$obj);
                 my $cnts = $parsed_obj->op_data;
                 
                 my $pid = open2(\*CHLD_OUT, \*CHLD_IN, 

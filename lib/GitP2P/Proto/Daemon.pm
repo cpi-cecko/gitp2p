@@ -35,18 +35,15 @@ use MIME::Base64 qw/encode_base64 decode_base64/;
 
 has 'version' => ('is' => 'rw', 'isa' => 'Str');
 has 'op_name' => ('is' => 'rw', 'isa' => 'Str');
-has 'op_info' => ('is' => 'rw', 'isa' => 'Str');
 has 'op_data' => ('is' => 'rw', 'isa' => 'Str');
 
 my $VERSION = '0.1.0';
 
 
-
-# TODO: Make the param a ref
 # TODO: Split in two, separate protocols
 # TODO: Escape special characters like ':'
 # TODO: Parse the version better
-method parse(Str $data) {
+method parse(Str \$data) {
     my ($version, $msg) = $data =~ /^(\d+\.\d+\.\d+)\s(.*)$/;
     die "Incompatible version $version" 
         if $version ne $VERSION;
@@ -54,9 +51,8 @@ method parse(Str $data) {
     my ($type, $rest) = (substr($msg, 0, 1), substr($msg, 1));
 
     if ($type eq "d") {
-        my ($op_name, $user_id, $data_type, $hash, $cnts) = split / /, $rest;
+        my ($op_name, $cnts) = split / /, $rest;
         $self->op_name($op_name);
-        $self->op_info(join ":", ($user_id, $data_type, $hash));
         $self->op_data(decode_base64 $cnts);
 
         return;
@@ -72,17 +68,11 @@ method parse(Str $data) {
 }
 
 # TODO: Check for members' existence
-func build_data(Str $op_name, HashRef[Str] $op_data is ro) {
-    my $cnts = encode_base64 ${op_data}->{cnts}, "";
+func build_data(Str $op_name, Str \$data is ro) {
+    my $cnts = encode_base64 $data, "";
     chomp $cnts;
-    my $user_id = ${op_data}->{user_id};
-    chomp $user_id;
-    my $hash = ${op_data}->{hash};
-    chomp $hash;
-    my $type = ${op_data}->{type};
-    chomp $type;
 
-    $VERSION . " " . "d" . join " ", ($op_name, $user_id, $type, $hash, $cnts);
+    $VERSION . " " . "d" . join " ", ($op_name, $cnts);
 }
 
 func build_comm(Str $op_name, ArrayRef[Str] $query is ro) {

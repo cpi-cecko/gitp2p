@@ -24,9 +24,9 @@ use GitP2P::Core::Common;
 use App::Daemon qw/daemonize/;
 daemonize();
 
-my %operations = ( "list"  => \&on_list,
-                 , "fetch" => \&on_fetch,
-                 , "hugz"  => \&on_hugz,
+my %operations = ( "list"           => \&on_list,
+                 , "fetch_pkt_line" => \&on_fetch,
+                 , "hugz"           => \&on_hugz,
                  );
 
 die "Usage: ./gitp2pd <cfg_path>"
@@ -56,12 +56,9 @@ func on_list(Object $sender, GitP2P::Proto::Daemon $msg) {
     say "[INFO] Refs: $refs_to_send";
 
     # TODO: rework protocol
-    my $refs_msg = GitP2P::Proto::Daemon::build_data("recv",
-        {'user_id' => 'dummyuid',
-         'type'    => 'refs',
-         'hash'    => 'dummy',
-         'cnts'    => $refs_to_send
-        });
+    my $refs_msg = GitP2P::Proto::Daemon::build_data(
+        "recv_refs", \$refs_to_send);
+
     say "[INFO] Refs message: $refs_msg";
     $sender->write($refs_msg . "\n");
 }
@@ -109,12 +106,8 @@ func on_fetch(Object $sender, GitP2P::Proto::Daemon $msg) {
     my $pack_data = GitP2P::Core::Common::create_pack_from_list(\@objects, $repo_path);
     say "[INFO] pack_data: '$pack_data'";
 
-    my $pack_msg = GitP2P::Proto::Daemon::build_data("recv",
-        { 'user_id' => $user_id,
-          'type' => 'pack',
-          'hash' => 'dummy',
-          'cnts' => $pack_data
-        });
+    my $pack_msg = GitP2P::Proto::Daemon::build_data(
+        "recv_pack", \$pack_data);
     sleep $cfg->{debug_sleep} if exists $cfg->{debug_sleep};
     $sender->write($pack_msg . "\n");
     $sender->write("end\n");
@@ -143,12 +136,12 @@ $loop->listen(
                 return 0 if $eof;
 
                 my $msg = GitP2P::Proto::Daemon->new;
-                $msg->parse($$buffref);
+                $msg->parse(\$$buffref);
 
                 if (not exists $operations{$msg->op_name}) {
                     my $cmd = $msg->op_name;
                     print "[INFO] Invalid command: " . $msg->op_name . "\n";
-                    $sender->wrte("NACK: Invalid command - '$cmd'\n");
+                    $sender->write("NACK: Invalid command - '$cmd'\n");
                 } else {
                     print "[INFO] Exec command: " . $msg->op_name . "\n";
                     $operations{$msg->op_name}->($sender, $msg);
