@@ -11,6 +11,7 @@ use File::Copy;
 use File::Temp qw/tempfile/;
 use File::pushd; # I love dirs ^_^
 use IPC::Open2;
+use List::MoreUtils qw/uniq/;
 
 
 func list_objects(Str $git_dir) {
@@ -40,7 +41,7 @@ func list_objects(Str $git_dir) {
     #      "unreachable: @unreachable\nmissing: @missing\nBad: @bad_objects\n" .
     #      "Objects: @objects\n\n";
 
-    return @objects;
+    return uniq @objects;
 }
 
 func create_pack_from_list(ArrayRef[Str] $objects, Str $git_dir) {
