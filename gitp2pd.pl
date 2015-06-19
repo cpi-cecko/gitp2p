@@ -72,9 +72,13 @@ func on_fetch(Object $sender, GitP2P::Proto::Daemon $msg) {
     my $objects = $msg->op_data;
 
     my ($repo, $id, @rest) = split /\n/, $objects;
-    # TODO: Validate repo line
+
+    die "Invalid repo line format: '$repo'"
+        if $repo !~ /^repo \S+ \S+$/;
     my (undef, $repo_name, $repo_owner) = split / /, $repo;
-    # TODO: Validate id
+
+    die "Invalid id line format: '$id'"
+        if $id !~ /^id \d+ \d+$/;
     my (undef, $beg, $step) = split / /, $id;
 
     my @wants;
