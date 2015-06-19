@@ -8,22 +8,15 @@ use Path::Tiny;
 use IO::Socket::INET;
 
 
-func get_relay(Str $config_file_name is ro) {
-    my @config = path($config_file_name)->lines;
-    my ($relay_list) = grep { /relays=/ } @config;
-    my @relays = split /,/, (split /=/, $relay_list)[1];
-
-    return $relays[0];
+# TODO: Don't rely on preferred relay
+func get_relay(\$config_file is ro) {
+    my $preferred_relay = $config_file->{preferred_relay};
+    return $config_file->{relays}->{$preferred_relay};
 }
 
-func establish_connection(Str $address, Str $cfg) {
-    my $local_port = 47778;
-    if ($cfg ne "" && path($cfg)->exists) {
-        $local_port = int ((path($cfg)->lines({chomp=>1}))[0]);
-    } 
-    elsif ($cfg ne "") {
-        $local_port = int $cfg;
-    }
+func establish_connection(Str $address, \$config_file is ro, $is_hash = 1) {
+    my $local_port = $is_hash ? $config_file->{port_daemon} : $config_file;
+
     warn "Addr: $address; local_port: $local_port\n";
     my $s = IO::Socket::INET->new(PeerAddr => $address,
                                   LocalPort => $local_port,

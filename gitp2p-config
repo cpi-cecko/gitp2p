@@ -1,1 +1,10 @@
-relays=localhost:12345,gitp2p.fmi.uni-sofia.bg:12345
+{
+    "relays":
+        {
+            "localhost": "localhost:12500"
+        },
+    "preferred_relay": "localhost",
+    "port_daemon": 47001,
+    "port_relay": 12500,
+    "port_hugz": 12501
+}

@@ -17,6 +17,7 @@ use IO::Select;
 use Data::Dumper;
 use IPC::Open2;
 use File::pushd;
+use JSON::XS;
 
 use GitP2P::Proto::Relay;
 use GitP2P::Proto::Daemon;
@@ -25,8 +26,10 @@ use GitP2P::Core::Finder;
 use GitP2P::Core::Common;
 
 
-my $cfg = "";
-$cfg = "./cfg" if path("./cfg")->exists;
+my $cfg_file = "./gitp2p-config" if path("./gitp2p-config")->exists;
+my $cfg = JSON::XS->new->ascii->decode(path($cfg_file)->slurp) 
+    if $cfg_file ne "";
+
 my ($remote, $url) = @ARGV;
 
 sub echo($) {
@@ -57,8 +60,8 @@ func do_list() {
     my ($owner, $repo) = get_repo_info($url);
     my $msg = GitP2P::Proto::Relay::build("get-peers", [$repo, $owner]);
 
-    my $relay = GitP2P::Core::Finder::get_relay("gitp2p-config");
-    my $s = GitP2P::Core::Finder::establish_connection($relay, $cfg);
+    my $relay = GitP2P::Core::Finder::get_relay(\$cfg);
+    my $s = GitP2P::Core::Finder::establish_connection($relay, \$cfg);
     $s->send($msg);
 
     my $resp = <$s>;
@@ -72,7 +75,7 @@ func do_list() {
     my @peers = split /,/, $resp;
 
     my $list_msg = GitP2P::Proto::Daemon::build_comm("list", [$repo]);
-    my $pS = GitP2P::Core::Finder::establish_connection($peers[0], $cfg);
+    my $pS = GitP2P::Core::Finder::establish_connection($peers[0], \$cfg);
     $pS->send($list_msg);
     
     $resp = <$pS>;
@@ -142,8 +145,8 @@ func do_fetch(ArrayRef[Str] $refs) {
     my ($owner, $repo) = get_repo_info($url);
     my $relay_msg = GitP2P::Proto::Relay::build("get-peers", [$repo, $owner]);
 
-    my $relay = GitP2P::Core::Finder::get_relay("gitp2p-config");
-    my $s = GitP2P::Core::Finder::establish_connection($relay, $cfg);
+    my $relay = GitP2P::Core::Finder::get_relay(\$cfg);
+    my $s = GitP2P::Core::Finder::establish_connection($relay, \$cfg);
     $s->send($relay_msg);
 
     my $resp = <$s>;
@@ -168,7 +171,7 @@ func do_fetch(ArrayRef[Str] $refs) {
     # my $me = `git config --get user.email`;
     # $relay_msg = GitP2P::Proto::Relay::build("add-peer", [$repo, $me]);
 
-    # $s = GitP2P::Core::Finder::establish_connection($relay, $cfg);
+    # $s = GitP2P::Core::Finder::establish_connection($relay, \$cfg);
     # $s->send($relay_msg);
 
     # $resp = <$s>;
@@ -192,7 +195,7 @@ func receive_objects(ArrayRef[Str] $peers, Str $repo, Str $owner,
         $peer_packet->append(\$packet);
 
         # TODO: What if we can't establish a connection?
-        my $pS = GitP2P::Core::Finder::establish_connection($peer, $cfg);
+        my $pS = GitP2P::Core::Finder::establish_connection($peer, \$cfg);
         $pSelect->add($pS);
         my $pack = GitP2P::Proto::Daemon::build_data(
               "fetch", { 'user_id' => "dummy", 

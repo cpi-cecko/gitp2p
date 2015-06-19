@@ -12,6 +12,7 @@ use Method::Signatures;
 use IO::Async::Stream;
 use IO::Async::Loop;
 use IO::Select;
+use JSON::XS;
 
 use GitP2P::Proto::Relay;
 use GitP2P::Proto::Daemon;
@@ -21,8 +22,11 @@ use GitP2P::Core::Finder;
 my %operations = ( "get-peers" => \&on_get_peers
                  , "add-peer"  => \&on_add_peer
                  );
-# TODO: Get from config
-my $local_port = "12500";
+
+die "Usage: ./gitp2p-relay <cfg_path>"
+    if scalar @ARGV == 0;
+my $cfg_file = $ARGV[0];
+my $cfg = JSON::XS->new->ascii->decode(path($cfg_file)->slurp);
 
 
 func on_add_peer(Object $sender, Str $op_data) {
@@ -74,8 +78,7 @@ func on_get_peers(Object $sender, Str $op_data) {
 func get_hugged_peers(ArrayRef[Str] $peer_addresses) {
     my $pSelect = IO::Select->new;
     for (@$peer_addresses) {
-        my $daemon_local_port = "12501";
-        my $pS = GitP2P::Core::Finder::establish_connection($_, $daemon_local_port);
+        my $pS = GitP2P::Core::Finder::establish_connection($_, \$cfg->{port_hugz}, 0);
         next if $pS == 0;
         my $hugz = GitP2P::Proto::Daemon::build_comm("hugz", [""]); 
         $pS->send($hugz . "\n");
@@ -99,7 +102,7 @@ my $loop = IO::Async::Loop->new;
 
 # TODO: Query other relays if no info here
 $loop->listen(
-    service => $local_port,
+    service => $cfg->{port_relay},
     socktype => 'stream',
 
     on_stream => sub {
