@@ -173,20 +173,6 @@ func do_fetch(ArrayRef[Str] $refs) {
     # Ugly hack which adds by hand the HEAD reference to .git/packed-refs
     my $master_ref = (grep { $_ =~ qr(refs/heads/master$) } @$refs)[0];
     system "echo $master_ref >> $repo/.git/packed-refs";
-
-    # Sends message to the relay to add us as a peer
-    # TODO: Check if everything was ok. Only then send message to relay.
-    # my $me = `git config --get user.email`;
-    # $relay_msg = GitP2P::Proto::Relay::build("add-peer", [$repo, $me]);
-
-    # $s = GitP2P::Core::Finder::establish_connection($relay, \$cfg);
-    # $s->send($relay_msg);
-
-    # $resp = <$s>;
-    # chomp $resp;
-
-    # warn "[INFO] Response: $resp";
-    # close $s;
 }
 
 func receive_objects(ArrayRef[Str] $peers, Str $repo, Str $owner, 
