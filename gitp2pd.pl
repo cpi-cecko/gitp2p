@@ -32,7 +32,6 @@ my %operations = ( "list"  => \&on_list,
 die "Usage: ./gitp2pd <cfg_path>"
     if scalar @ARGV == 0;
 my $cfg_file = $ARGV[0];
-
 my $cfg = JSON::XS->new->ascii->decode(path($cfg_file)->slurp);
 
 
@@ -93,12 +92,12 @@ func on_fetch(Object $sender, GitP2P::Proto::Daemon $msg) {
     }
 
     my $repo_path = $cfg->{repos}->{$repo_name} . "/../";
+    # TODO: List objects based on the refs that `wants' contains
     my @objects = GitP2P::Core::Common::list_objects($repo_path);
     for my $have (@haves) { # Hacking my way through life
         @objects = grep { $_ !~ /^$have/ } @objects;
     }
 
-    # TODO: Use wants and haves properly
     # Get every $step-th object beggining from $beg
     @objects = @objects[map { $_ += $beg } indexes { $_ % $step == 0 } (0..$#objects)];
     @objects = grep { defined $_ } @objects;
@@ -125,7 +124,7 @@ func on_fetch(Object $sender, GitP2P::Proto::Daemon $msg) {
 func on_hugz(Object $sender, GitP2P::Proto::Daemon $msg) {
     my $hugz_back = GitP2P::Proto::Daemon::build_comm("hugz-back", [""]);
     # sleep $cfg->{debug_sleep} if exists $cfg->{debug_sleep};
-    $sender->write($hugz_back . "\n");
+    $sender->write($hugz_back . "\n"); # I don't know who's gonna hug the pieces that die
 }
 
 
