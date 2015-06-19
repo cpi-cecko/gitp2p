@@ -75,9 +75,14 @@ func do_list() {
 
     my @peers = split /,/, $resp;
 
-    my $list_msg = GitP2P::Proto::Daemon::build_comm("list", [$repo]);
-    # TODO: Retry with next peer, if there's one. Otherwise, die
     my $pS = GitP2P::Core::Finder::establish_connection($peers[0], \$cfg);
+    while (!$pS && shift @peers) {
+        $pS = GitP2P::Core::Finder::establish_connection($peers[0], \$cfg);
+    }
+    die "Can't connect with peers for repo"
+        if !$pS && $#peers == -1;
+
+    my $list_msg = GitP2P::Proto::Daemon::build_comm("list", [$repo]);
     $pS->send($list_msg);
     
     $resp = <$pS>;
