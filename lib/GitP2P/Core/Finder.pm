@@ -14,6 +14,26 @@ func get_relay(\$config_file is ro) {
     return $config_file->{relays}->{$preferred_relay};
 }
 
+func connect_to_relay(\$config_file is ro) {
+    my $relay = get_relay(\$config_file);
+    my $s = GitP2P::Core::Finder::establish_connection($relay, \$config_file);
+    return $s if $s;
+
+    my @all_relays = values %{$config_file->{relays}};
+    @all_relays = grep { $_ ne $relay } @all_relays;
+    while (!$s) {
+        $relay = shift @all_relays;
+        last unless $relay;
+
+        $s = GitP2P::Core::Finder::establish_connection($relay, \$config_file);
+    }
+
+    die "Can't connect with any relay"
+        if !$s && $#all_relays == -1;
+
+    return $s;
+}
+
 func establish_connection(Str $address, \$config_file is ro, $is_hash = 1) {
     my $local_port = $is_hash ? $config_file->{port_daemon} : $config_file;
 

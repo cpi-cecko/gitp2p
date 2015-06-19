@@ -60,9 +60,7 @@ func do_list() {
     my ($owner, $repo) = get_repo_info($url);
     my $msg = GitP2P::Proto::Relay::build("get-peers", [$repo, $owner]);
 
-    my $relay = GitP2P::Core::Finder::get_relay(\$cfg);
-    # TODO: Retry with different relay. If can't, die.
-    my $s = GitP2P::Core::Finder::establish_connection($relay, \$cfg);
+    my $s = GitP2P::Core::Finder::connect_to_relay(\$cfg);
     $s->send($msg);
 
     my $resp = <$s>;
@@ -152,9 +150,7 @@ func do_fetch(ArrayRef[Str] $refs) {
     my ($owner, $repo) = get_repo_info($url);
     my $relay_msg = GitP2P::Proto::Relay::build("get-peers", [$repo, $owner]);
 
-    my $relay = GitP2P::Core::Finder::get_relay(\$cfg);
-    # TODO: Retry with different relay. If can't, die.
-    my $s = GitP2P::Core::Finder::establish_connection($relay, \$cfg);
+    my $s = GitP2P::Core::Finder::connect_to_relay(\$cfg);
     $s->send($relay_msg);
 
     my $resp = <$s>;
