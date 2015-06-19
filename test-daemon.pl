@@ -44,7 +44,6 @@ func unpack_packs(Object $pack_dir, Object $repo_dir) {
     my $pack = ($temp_dir->children(qr/^pack-.*\.pack$/))[0];
     say "[INFO] pack " . $pack->realpath;
 
-    # TODO: escape $pack
     system ("git unpack-objects <" . $pack->realpath) == -1
         and die $?;
 
