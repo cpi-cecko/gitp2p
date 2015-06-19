@@ -61,6 +61,7 @@ func do_list() {
     my $msg = GitP2P::Proto::Relay::build("get-peers", [$repo, $owner]);
 
     my $relay = GitP2P::Core::Finder::get_relay(\$cfg);
+    # TODO: Retry with different relay. If can't, die.
     my $s = GitP2P::Core::Finder::establish_connection($relay, \$cfg);
     $s->send($msg);
 
@@ -75,6 +76,7 @@ func do_list() {
     my @peers = split /,/, $resp;
 
     my $list_msg = GitP2P::Proto::Daemon::build_comm("list", [$repo]);
+    # TODO: Retry with next peer, if there's one. Otherwise, die
     my $pS = GitP2P::Core::Finder::establish_connection($peers[0], \$cfg);
     $pS->send($list_msg);
     
@@ -146,6 +148,7 @@ func do_fetch(ArrayRef[Str] $refs) {
     my $relay_msg = GitP2P::Proto::Relay::build("get-peers", [$repo, $owner]);
 
     my $relay = GitP2P::Core::Finder::get_relay(\$cfg);
+    # TODO: Retry with different relay. If can't, die.
     my $s = GitP2P::Core::Finder::establish_connection($relay, \$cfg);
     $s->send($relay_msg);
 
@@ -194,7 +197,8 @@ func receive_objects(ArrayRef[Str] $peers, Str $repo, Str $owner,
         $peer_packet->write("id $id " . scalar @$peers);
         $peer_packet->append(\$packet);
 
-        # TODO: What if we can't establish a connection?
+        # TODO: If can't connect, remove peer.
+        # TODO: How shall we reasign the ids?
         my $pS = GitP2P::Core::Finder::establish_connection($peer, \$cfg);
         $pSelect->add($pS);
         my $pack = GitP2P::Proto::Daemon::build_data(

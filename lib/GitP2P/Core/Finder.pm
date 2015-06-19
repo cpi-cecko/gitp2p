@@ -23,16 +23,11 @@ func establish_connection(Str $address, \$config_file is ro, $is_hash = 1) {
                                   ReuseAddr => SO_REUSEADDR,
                                   ReusePort => SO_REUSEPORT,
                                   Proto => 'tcp');
-    # Reminder: Handling failures should be easier than rocket-science
-    return ($s or handle_failure($!));
+
+    return ($s or handle_failure());
 }
 
-sub handle_failure($) {
-    my $err = shift;
-    # return 0
-    #     if $err =~ /Connection refused/;
-
-    # TODO: Fix error handling
+sub handle_failure {
     warn "Cannot create socket: $!";
     return 0;
 }
