@@ -55,7 +55,6 @@ func on_list(Object $sender, GitP2P::Proto::Daemon $msg) {
     }
     say "[INFO] Refs: $refs_to_send";
 
-    # TODO: rework protocol
     my $refs_msg = GitP2P::Proto::Daemon::build_data(
         "recv_refs", \$refs_to_send);
 
