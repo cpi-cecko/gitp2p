@@ -40,8 +40,6 @@ has 'op_data' => ('is' => 'rw', 'isa' => 'Str');
 my $VERSION = '0.1.0';
 
 
-# TODO: Split in two, separate protocols
-# TODO: Escape special characters like ':'
 # TODO: Parse the version better
 method parse(Str \$data) {
     my ($version, $msg) = $data =~ /^(\d+\.\d+\.\d+)\s(.*)$/;
@@ -67,7 +65,6 @@ method parse(Str \$data) {
     die ("Invalid pack format");
 }
 
-# TODO: Check for members' existence
 func build_data(Str $op_name, Str \$data is ro) {
     my $cnts = encode_base64 $data, "";
     chomp $cnts;
