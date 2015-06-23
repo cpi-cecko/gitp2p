@@ -176,7 +176,7 @@ func receive_objects(ArrayRef[Str] $peers, Str $repo, Str $owner,
     my $pSelect = IO::Select->new;
 
     # Send desires
-    my $id = 0; # Used to determine what each pear will send
+    my $id = 0; # Used to determine what each peer will send
     for my $peer (@$peers) {
         my $peer_packet = GitP2P::Proto::Packet->new;
 
