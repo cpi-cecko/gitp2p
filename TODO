@@ -13,7 +13,7 @@ V 3. Go through TODOs
 1. gitp2p-config gets moved a lot
 2. Torrent tracker web interface
 3. Repo for signed docs
-4. Don't unpack packs!
+V 4. Don't unpack packs!
 5. Handshake before connections
 6. Handle alternatives
 7. After discovery of the initial network peer, we should be able to rely on
