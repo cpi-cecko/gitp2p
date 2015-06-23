@@ -14,6 +14,15 @@ use IPC::Open2;
 use List::MoreUtils qw/uniq/;
 
 
+func show_refs(Str $repo_dir) {
+    my $out;
+    {
+        my $dir = pushd "$repo_dir";
+        $out = `git show-ref`;
+    }
+    return split /\n/, $out;
+}
+
 func list_objects(Str $git_dir) {
     my $abs_path = path($git_dir)->absolute . "/";
 
