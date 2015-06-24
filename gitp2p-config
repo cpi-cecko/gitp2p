@@ -6,5 +6,6 @@
     "preferred_relay": "localhost",
     "port_daemon": 47001,
     "port_relay": 12500,
-    "port_hugz": 12501
+    "port_hugz": 12501,
+    "peers_file": "/media/files/PROJECTS/gitp2p/peers"
 }
