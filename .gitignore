@@ -34,3 +34,5 @@ docs/*.out
 docs/*.pdf
 
 t/testRepos/
+
+*.log
