@@ -27,6 +27,7 @@ use GitP2P::Core::Common;
 
 
 my $cfg_file = "./gitp2p-config" if path("./gitp2p-config")->exists;
+# TODO: Check for undef $cfg_file
 my $cfg = JSON::XS->new->ascii->decode(path($cfg_file)->slurp) 
     if $cfg_file ne "";
 
@@ -100,6 +101,7 @@ func do_list() {
     echo_empty;
 }
 
+# TODO: Use GitP2P::Core::Common::show_refs
 func get_wants(ArrayRef[Str] $refs, Str $repo_dir) {
     my @want;
     my $out;
