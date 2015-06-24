@@ -27,7 +27,6 @@ my $daemon_peer1;
 
 # Start relay
 {
-    # TODO: Make the relay log to a file
     $relay = Proc::Background->new("perl",
         "$Bin/../gitp2p-relay.pl", "$Bin/../gitp2p-config");
 }

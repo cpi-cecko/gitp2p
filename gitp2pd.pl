@@ -17,12 +17,17 @@ use List::Util qw/reduce/;
 use List::MoreUtils qw/indexes/;
 use JSON::XS;
 use Data::Dumper;
+use Log::Log4perl;
 
 use GitP2P::Proto::Daemon;
 use GitP2P::Core::Common;
 
 use App::Daemon qw/daemonize/;
 daemonize();
+
+Log::Log4perl::init("$FindBin::Bin/gitp2p-log.conf");
+my $log = Log::Log4perl->get_logger("gitp2pd");  
+$log->info("RUNNING");
 
 my %operations = ( "list"           => \&on_list,
                  , "fetch_pkt_line" => \&on_fetch,
@@ -32,8 +37,12 @@ my %operations = ( "list"           => \&on_list,
 die "Usage: ./gitp2pd <cfg_path>"
     if scalar @ARGV == 0;
 my $cfg_file = $ARGV[0];
+$log->logdie("Config doesn't exist") unless path($cfg_file)->exists;
+
 my $cfg = JSON::XS->new->ascii->decode(path($cfg_file)->slurp);
 
+
+$log->info("Got cfg $cfg");
 
 # Lists refs for a given repo
 func on_list(Object $sender, GitP2P::Proto::Daemon $msg) {
@@ -47,12 +56,12 @@ func on_list(Object $sender, GitP2P::Proto::Daemon $msg) {
         $ref !~ /remotes/
             and $refs_to_send .= $ref . "\n";
     }
-    say "[INFO] Refs: $refs_to_send";
+    $log->info(("Refs: $refs_to_send"));
 
     my $refs_msg = GitP2P::Proto::Daemon::build_data(
         "recv_refs", \$refs_to_send);
 
-    say "[INFO] Refs message: $refs_msg";
+    $log->info(("Refs message: $refs_msg"));
     $sender->write($refs_msg . "\n");
 }
 
@@ -91,13 +100,13 @@ func on_fetch(Object $sender, GitP2P::Proto::Daemon $msg) {
     # Get every $step-th object beggining from $beg
     @objects = @objects[map { $_ += $beg } indexes { $_ % $step == 0 } (0..$#objects)];
     @objects = grep { defined $_ } @objects;
-    say "[INFO] objects \n" . join "", @objects;
+    $log->info("objects \n" . join "", @objects);
 
     my $config_file = $cfg->{repos}->{$repo_name} . "/config";
     my $user_id = qx(git config --file $config_file --get user.email);
 
     my $pack_data = GitP2P::Core::Common::create_pack_from_list(\@objects, $repo_path);
-    say "[INFO] pack_data: '$pack_data'";
+    $log->info("pack_data: '$pack_data'");
 
     my $pack_msg = GitP2P::Proto::Daemon::build_data(
         "recv_pack", \$pack_data);
@@ -122,6 +131,7 @@ $loop->listen(
 
     on_stream => sub {
         my ($stream) = @_;
+        $log->info("HAS STREM $stream");
 
         $stream->configure(
             on_read => sub {
@@ -133,10 +143,10 @@ $loop->listen(
 
                 if (not exists $operations{$msg->op_name}) {
                     my $cmd = $msg->op_name;
-                    print "[INFO] Invalid command: " . $msg->op_name . "\n";
+                    $log->info("Invalid command: " . $msg->op_name . "\n");
                     $sender->write("NACK: Invalid command - '$cmd'\n");
                 } else {
-                    print "[INFO] Exec command: " . $msg->op_name . "\n";
+                    $log->info("Exec command: " . $msg->op_name . "\n");
                     $operations{$msg->op_name}->($sender, $msg);
                 }
 
@@ -149,9 +159,9 @@ $loop->listen(
         $loop->add($stream);
     },
 
-    on_resolve_error => sub { print STDERR "Cannot resolve - $_[0]\n"; },
-    on_listen_error => sub { print STDERR "Cannot listen\n"; },
+    on_resolve_error => sub { $log->info("Cannot resolve - $_[0]\n"); },
+    on_listen_error => sub { $log->info("Cannot listen\n"); },
 );
 
-
+$log->info("Starting loop");
 $loop->run;

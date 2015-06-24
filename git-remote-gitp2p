@@ -18,6 +18,7 @@ use Data::Dumper;
 use IPC::Open2;
 use File::pushd;
 use JSON::XS;
+use Log::Log4perl;
 
 use GitP2P::Proto::Relay;
 use GitP2P::Proto::Daemon;
@@ -25,6 +26,10 @@ use GitP2P::Proto::Packet;
 use GitP2P::Core::Finder;
 use GitP2P::Core::Common;
 
+
+Log::Log4perl::init("$FindBin::Bin/gitp2p-log.conf");
+my $log = Log::Log4perl->get_logger("gitp2p.helper");  
+$log->info("gitp2p helper RUNNING");
 
 my $cfg_file = "./gitp2p-config" if path("./gitp2p-config")->exists;
 # TODO: Check for undef $cfg_file
@@ -45,7 +50,7 @@ sub echo_empty {
 func get_repo_info(Str $url) {
     # gitp2p://<user_name>/<repo_name>
     if ($url !~ /^gitp2p:\/\/([a-z0-9@.-]*)\/(.*)$/) {
-        die "Invalid url: $url";
+        $log->logdie("Invalid url: $url");
     }
     return ($1, $2);
 }
@@ -69,7 +74,7 @@ func do_list() {
 
     close $s;
 
-    die "Bad resp: '$resp'"
+    $log->logdie("Bad resp: '$resp'")
         if ($resp =~ /^NACK/);
 
     my @peers = split /,/, $resp;
@@ -78,7 +83,7 @@ func do_list() {
     while (!$pS && shift @peers) {
         $pS = GitP2P::Core::Finder::establish_connection($peers[0], \$cfg);
     }
-    die "Can't connect with peers for repo"
+    $log->logdie("Can't connect with peers for repo")
         if !$pS && $#peers == -1;
 
     my $list_msg = GitP2P::Proto::Daemon::build_comm("list", [$repo]);
@@ -111,7 +116,7 @@ func get_wants(ArrayRef[Str] $refs, Str $repo_dir) {
     }
     my @my_refs = split /\n/, $out;
     for (@$refs) {
-        warn $_;
+        $log->info("Ref: $_");
         $_ =~ /^([a-f0-9]{40}).*$/;
         push @want, $1
             if not grep { $_ } @my_refs;
@@ -133,14 +138,14 @@ func create_objects_packet(ArrayRef[Str] $refs) {
     }
 
     my @want = get_wants($refs, $repo_dir);
-    warn "Wants: " . scalar @want;
+    $log->info("Wants: " . scalar @want);
     my $packet = GitP2P::Proto::Packet->new;
     for (@want) {
         $packet->write("want $_");
     }
 
     my @have = get_haves($repo_dir);
-    warn "Haves: " . scalar @have;
+    $log->info("Haves: " . scalar @have);
     for (@have) {
         $packet->write("have $_");
     }
@@ -160,7 +165,7 @@ func do_fetch(ArrayRef[Str] $refs) {
 
     close $s;
 
-    die "Bad resp: '$resp'"
+    $log->logdie("Bad resp: '$resp'")
         if ($resp =~ /^NACK/);
 
     my $packet = create_objects_packet($refs);
@@ -192,7 +197,7 @@ func receive_objects(ArrayRef[Str] $peers, Str $repo, Str $owner,
         $pSelect->add($pS);
         my $pack = GitP2P::Proto::Daemon::build_data(
               "fetch_pkt_line", \$peer_packet->to_send);
-        warn $pack;
+        $log->info("Pack: $pack");
         $pS->send($pack); 
 
         $id++;
@@ -213,7 +218,7 @@ func receive_objects(ArrayRef[Str] $peers, Str $repo, Str $owner,
                     "git", "index-pack", "-v", "--stdin", "--fix-thin", "--keep");
                 print CHLD_IN $cnts;
                 while (<CHLD_OUT>) {
-                    warn "git-index-pack: $_";
+                    $log->info("git-index-pack: $_");
                 }
 
                 $obj = <$peer>;
@@ -236,7 +241,7 @@ func receive_objects(ArrayRef[Str] $peers, Str $repo, Str $owner,
 while (<STDIN>) {
     chomp;
     next if $_ =~ /^\s*$/;
-    warn $_;
+    $log->info("Op: $_");
 
     $_ =~ /^(\w+)\s?/;
     my ($cmd) = $1;
@@ -262,6 +267,6 @@ while (<STDIN>) {
         echo_empty;
     } 
     else {
-        die "Invalid capability '$cmd'";
+        $log->logdie("Invalid capability '$cmd'");
     }
 }
