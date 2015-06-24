@@ -36,7 +36,7 @@ func on_add_peer(Object $sender, Str $op_data) {
         my $peer_entry = $1 . ' ^ ' . $addr . ':' . $port . "\n";
         print "[INFO] Received entry: $peer_entry";
 
-        my $peers = path("peers");
+        my $peers = path($cfg->{peers_file});
         if ($peers->exists && grep { /\Q$peer_entry\E/ } $peers->lines) {
             $sender->write("NACK: already added\n");
         } else {
@@ -51,7 +51,7 @@ func on_get_peers(Object $sender, Str $op_data) {
         my ($repo_name, $owner_id) = ($1, $2);
         print "[INFO] Searching repo: $repo_name from $owner_id\n";
 
-        my $peers = path("peers");
+        my $peers = path($cfg->{peers_file});
         if ($peers->exists) {
             my @peers_addr;
             for ($peers->lines) {
