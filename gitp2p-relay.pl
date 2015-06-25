@@ -21,7 +21,7 @@ use GitP2P::Proto::Daemon;
 use GitP2P::Core::Finder;
 
 
-Log::Log4perl::init("$FindBin::Bin/gitp2p-log.conf");
+Log::Log4perl::init_and_watch("$FindBin::Bin/gitp2p-log.conf", 'HUP');
 my $log = Log::Log4perl->get_logger("gitp2p.relay");
 $log->info("Relay RUNNING");
 
