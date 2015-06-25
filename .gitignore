@@ -36,3 +36,5 @@ docs/*.pdf
 t/testRepos/
 
 *.log
+
+t/test-users/
