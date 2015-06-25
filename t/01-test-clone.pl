@@ -70,7 +70,7 @@ my $daemon_peer1;
 
     # Spawn daemon
     $daemon_peer1 = Proc::Background->new("perl", 
-        "$Bin/../gitp2pd.pl", "$Bin/$simple_repo_dir/../daemon-cfg");
+        "$Bin/../gitp2pd.pl", "-X", "$Bin/$simple_repo_dir/../daemon-cfg");
 }
 
 
@@ -97,13 +97,6 @@ my $daemon_peer1;
             debug_sleep => 0
         });
     path("$simple_repo_peer2/../daemon-cfg")->touch->spew($daemon_cfg_cnts);
-
-    # Clone the repo
-    # my $daemon_started = `netstat -an | grep LISTEN`;
-    # print "\n======\n$daemon_started======\n";
-    # print "Alive: " . $daemon_peer1->alive . "\n";
-    # my $daemon_status = `./../gitp2pd.pl status`;
-    # print "\n=========\n$daemon_status========\n";
 
     my $dir = pushd "$simple_repo_peer2/../";
     my $clone_cmd = Git::Repository->command("clone", 
