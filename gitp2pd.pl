@@ -25,6 +25,7 @@ use GitP2P::Core::Common;
 use App::Daemon qw/daemonize/;
 daemonize();
 
+
 Log::Log4perl::init("$FindBin::Bin/gitp2p-log.conf");
 my $log = Log::Log4perl->get_logger("gitp2pd");  
 $log->info("RUNNING");
@@ -37,12 +38,11 @@ my %operations = ( "list"           => \&on_list,
 die "Usage: ./gitp2pd <cfg_path>"
     if scalar @ARGV == 0;
 my $cfg_file = $ARGV[0];
+
 $log->logdie("Config doesn't exist") unless path($cfg_file)->exists;
 
 my $cfg = JSON::XS->new->ascii->decode(path($cfg_file)->slurp);
 
-
-$log->info("Got cfg $cfg");
 
 # Lists refs for a given repo
 func on_list(Object $sender, GitP2P::Proto::Daemon $msg) {

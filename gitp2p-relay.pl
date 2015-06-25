@@ -2,7 +2,8 @@
 
 use strict;
 use warnings;
-use v5.20;
+use v5.020;
+
 
 use FindBin;
 use lib "$FindBin::Bin/lib";
@@ -31,6 +32,7 @@ my %operations = ( "get-peers" => \&on_get_peers
 $log->logdie("Usage: ./gitp2p-relay <cfg_path>")
     if scalar @ARGV == 0;
 my $cfg_file = $ARGV[0];
+
 $log->logdie("Config doesn't exist") unless path($cfg_file)->exists;
 
 my $cfg = JSON::XS->new->ascii->decode(path($cfg_file)->slurp);

@@ -5,6 +5,7 @@ use strict;
 use warnings;
 use v5.020;
 
+
 use FindBin;
 use lib "$FindBin::Bin/lib";
 
@@ -32,9 +33,9 @@ my $log = Log::Log4perl->get_logger("gitp2p.helper");
 $log->info("gitp2p helper RUNNING");
 
 my $cfg_file = "./gitp2p-config" if path("./gitp2p-config")->exists;
-# TODO: Check for undef $cfg_file
 my $cfg = JSON::XS->new->ascii->decode(path($cfg_file)->slurp) 
-    if $cfg_file ne "";
+    if $cfg_file ne "" and defined $cfg_file;
+
 
 my ($remote, $url) = @ARGV;
 
