@@ -9,14 +9,11 @@ use FindBin;
 use lib "$FindBin::Bin/lib";
 
 use Path::Tiny;
-use File::Copy;
 use Method::Signatures;
 use IO::Async::Stream;
 use IO::Async::Loop;
-use List::Util qw/reduce/;
 use List::MoreUtils qw/indexes/;
 use JSON::XS;
-use Data::Dumper;
 use Log::Log4perl;
 
 use GitP2P::Proto::Daemon;

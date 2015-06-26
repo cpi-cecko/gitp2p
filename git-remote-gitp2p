@@ -9,13 +9,10 @@ use v5.020;
 use FindBin;
 use lib "$FindBin::Bin/lib";
 
-use Getopt::Long;
-use Pod::Usage;
 use Method::Signatures;
 use Path::Tiny;
 use IO::Socket::INET;
 use IO::Select;
-use Data::Dumper;
 use IPC::Open2;
 use File::pushd;
 use JSON::XS;
