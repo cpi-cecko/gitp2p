@@ -6,6 +6,7 @@ use v5.020;
 
 
 use FindBin qw/$Bin/;
+use lib "$Bin/../lib";
 
 use Test::More;
 use Test::Git;
@@ -71,7 +72,7 @@ my $daemon_peer1;
 
     # Spawn daemon
     $daemon_peer1 = Proc::Background->new("perl", 
-        "$Bin/../gitp2pd.pl", "-X", "$Bin/$simple_repo_dir/../daemon-cfg");
+        "$Bin/../gitp2pd.pl", "-X", "$Bin/$simple_repo_dir/../daemon-cfg", "--add");
     sleep 1; # wait for the daemon to init
 }
 
