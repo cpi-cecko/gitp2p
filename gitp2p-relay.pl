@@ -39,10 +39,12 @@ my $cfg = JSON::XS->new->ascii->decode(path($cfg_file)->slurp);
 
 
 func on_add_peer(Object $sender, Str $op_data) {
-    if ($op_data =~ /^(.*:.*)/) {
+    # repo:user_id:last_ref
+    $log->info("Add peer data: $op_data");
+    if ($op_data =~ /^(.*?):(.*?):(.*)/) {
         my $addr = $sender->read_handle->peerhost;
         my $port = $sender->read_handle->peerport;
-        my $peer_entry = $1 . ' ^ ' . $addr . ':' . $port . "\n";
+        my $peer_entry = $1 . ':' . $2 . ' ^ ' . $addr . ':' . $port . ':' . $3 . "\n";
         $log->info("Received entry: $peer_entry");
 
         my $peers = path($cfg->{peers_file});
@@ -64,7 +66,7 @@ func on_get_peers(Object $sender, Str $op_data) {
         if ($peers->exists) {
             my @peers_addr;
             for ($peers->lines) {
-                if ($_ =~ /\Q$repo_name\E:\Q$owner_id\E(?::[^\s]+)? \^ (.*)\n$/) {
+                if ($_ =~ /\Q$repo_name\E:\Q$owner_id\E(?::[^\s]+)? \^ (.*?:.*?):.*\n$/) {
                     push @peers_addr, $1;
                 }
             }
