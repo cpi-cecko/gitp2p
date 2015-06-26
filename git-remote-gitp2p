@@ -270,7 +270,7 @@ while (<STDIN>) {
         do_list();
     }
     elsif ($cmd =~ /fetch/) {
-        $_ =~ /^\w+\s(.*)$/;
+        /^\w+\s(.*)$/;
         my @refs = ($1);
 
         while (<STDIN>) {
