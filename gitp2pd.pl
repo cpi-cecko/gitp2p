@@ -15,9 +15,12 @@ use IO::Async::Loop;
 use List::MoreUtils qw/indexes/;
 use JSON::XS;
 use Log::Log4perl;
+use File::pushd;
 
 use GitP2P::Proto::Daemon;
+use GitP2P::Proto::Relay;
 use GitP2P::Core::Common;
+use GitP2P::Core::Finder;
 
 use App::Daemon qw/daemonize/;
 daemonize();
@@ -32,13 +35,37 @@ my %operations = ( "list"           => \&on_list,
                  , "hugz"           => \&on_hugz,
                  );
 
-die "Usage: ./gitp2pd <cfg_path>"
+die "Usage: ./gitp2pd <cfg_path> [--add]"
     if scalar @ARGV == 0;
 my $cfg_file = $ARGV[0];
+my $is_add = 1 if defined $ARGV[1]; # Should we announce ourselves to the relay on startup
 
 $log->logdie("Config doesn't exist") unless path($cfg_file)->exists;
 
 my $cfg = JSON::XS->new->ascii->decode(path($cfg_file)->slurp);
+
+
+if ($is_add) {
+    # Hickaty hack
+    my $dir = pushd $cfg->{repos}->{"clone-simple"} . "../";
+
+    # Add daemon to relay
+    my $user_id = qx(git config --get user.email);
+    chomp $user_id;
+    my $last_ref = qx(git rev-list HEAD --max-count=1);
+    chomp $last_ref;
+
+    my $cfg = JSON::XS->new->ascii->decode(path("$FindBin::Bin/gitp2p-config")->slurp);
+    my $s = GitP2P::Core::Finder::connect_to_relay(\$cfg);
+    my $relay_add_msg = GitP2P::Proto::Relay::build("add-peer",
+        ["clone-simple", $user_id, $last_ref]);
+    $s->send($relay_add_msg);
+
+    my $resp = <$s>;
+    chomp $resp;
+
+    close $s;
+}
 
 
 # Lists refs for a given repo
