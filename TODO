@@ -5,7 +5,7 @@ V 1. Heartbeating:
 V 2. Data determination algorithm
     - What happens when a peer dies during transfer?
 V 3. Go through TODOs
-4. Testing of fetch functionality
+V 4. Testing of fetch functionality
     -- By hand
     -- Using a test suite
 
