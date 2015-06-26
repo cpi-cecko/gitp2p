@@ -33,3 +33,5 @@ V 4. Don't unpack packs!
 15. Tool to collect statistics about the network - repos, active peers, etc.
 16. Peer impersonation exploit
 17. Pruning inactive peers
+18. Use JSON::XS with Encode
+19. Refactor ref advertisment by peers
