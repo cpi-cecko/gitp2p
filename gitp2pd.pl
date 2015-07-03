@@ -71,7 +71,7 @@ if ($is_add) {
 # Lists refs for a given repo
 func on_list(Object $sender, GitP2P::Proto::Daemon $msg) {
     my $repo_name = $msg->op_data;
-    my $repo_dir = $cfg->{repos}->{$repo_name} . "../";
+    my $repo_dir = $cfg->{repos}->{$repo_name} . "/../";
     my @refs = GitP2P::Core::Common::show_refs($repo_dir);
 
     my $refs_to_send = '';
