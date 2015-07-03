@@ -60,6 +60,8 @@ func do_capabilities() {
     echo_empty;
 }
 
+# The relay contains a list of peers for a repo. Each peer has advertised its
+# latest tags and remote refs.
 func do_list() {
     my ($owner, $repo) = get_repo_info($url);
     my $msg = GitP2P::Proto::Relay::build("get-peers", [$repo, $owner]);
@@ -77,9 +79,9 @@ func do_list() {
 
     my @peers = split /,/, $resp;
 
-    my $pS = GitP2P::Core::Finder::establish_connection($peers[0], \$cfg);
+    my $pS = GitP2P::Core::Finder::establish_connection($peers[0]);
     while (!$pS && shift @peers) {
-        $pS = GitP2P::Core::Finder::establish_connection($peers[0], \$cfg);
+        $pS = GitP2P::Core::Finder::establish_connection($peers[0]);
     }
     $log->logdie("Can't connect with peers for repo")
         if !$pS && $#peers == -1;
@@ -181,7 +183,7 @@ func do_fetch(ArrayRef[Str] $refs) {
     chomp $user_id;
     my $last_ref = qx(git rev-list HEAD --max-count=1);
     chomp $last_ref;
-    $s = GitP2P::Core::Finder::connect_to_relay(\$cfg);
+    $s = GitP2P::Core::Finder::connect_to_relay(\$cfg, $cfg->{port_daemon});
     my $relay_add_msg = GitP2P::Proto::Relay::build("add-peer", [$repo, $user_id, $last_ref]);
     $s->send($relay_add_msg);
 
@@ -211,7 +213,7 @@ func receive_objects(ArrayRef[Str] $peers, Str $repo, Str $owner,
 
         # TODO: If can't connect, remove peer.
         # TODO: How shall we reasign the ids?
-        my $pS = GitP2P::Core::Finder::establish_connection($peer, \$cfg);
+        my $pS = GitP2P::Core::Finder::establish_connection($peer);
         $pSelect->add($pS);
         my $pack = GitP2P::Proto::Daemon::build_data(
               "fetch_pkt_line", \$peer_packet->to_send);

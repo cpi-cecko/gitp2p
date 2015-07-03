@@ -14,9 +14,9 @@ func get_relay(\$config_file is ro) {
     return $config_file->{relays}->{$preferred_relay};
 }
 
-func connect_to_relay(\$config_file is ro) {
+func connect_to_relay(\$config_file is ro, Maybe[Int] $local_port = undef) {
     my $relay = get_relay(\$config_file);
-    my $s = GitP2P::Core::Finder::establish_connection($relay, \$config_file);
+    my $s = GitP2P::Core::Finder::establish_connection($relay, $local_port);
     return $s if $s;
 
     my @all_relays = values %{$config_file->{relays}};
@@ -25,7 +25,7 @@ func connect_to_relay(\$config_file is ro) {
         $relay = shift @all_relays;
         last unless $relay;
 
-        $s = GitP2P::Core::Finder::establish_connection($relay, \$config_file);
+        $s = GitP2P::Core::Finder::establish_connection($relay, $local_port);
     }
 
     die "Can't connect with any relay"
@@ -34,10 +34,11 @@ func connect_to_relay(\$config_file is ro) {
     return $s;
 }
 
-func establish_connection(Str $address, \$config_file is ro, $is_hash = 1) {
-    my $local_port = $is_hash ? $config_file->{port_daemon} : $config_file;
+func establish_connection(Str $address, Maybe[Int] $local_port = undef) {
+    my $warn_str = "Addr: $address; ";
+    $warn_str .= "local_port: $local_port" if defined $local_port;
+    warn $warn_str;
 
-    warn "Addr: $address; local_port: $local_port\n";
     my $s = IO::Socket::INET->new(PeerAddr => $address,
                                   LocalPort => $local_port,
                                   ReuseAddr => SO_REUSEADDR,

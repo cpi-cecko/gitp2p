@@ -89,7 +89,7 @@ func on_get_peers(Object $sender, Str $op_data) {
 func get_hugged_peers(ArrayRef[Str] $peer_addresses) {
     my $pSelect = IO::Select->new;
     for (@$peer_addresses) {
-        my $pS = GitP2P::Core::Finder::establish_connection($_, \$cfg->{port_hugz}, 0);
+        my $pS = GitP2P::Core::Finder::establish_connection($_, $cfg->{port_hugz});
         next if $pS == 0;
         my $hugz = GitP2P::Proto::Daemon::build_comm("hugz", [""]); 
         $pS->send($hugz . "\n");

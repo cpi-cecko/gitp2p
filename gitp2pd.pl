@@ -56,7 +56,7 @@ if ($is_add) {
     chomp $last_ref;
 
     my $cfg = JSON::XS->new->ascii->decode(path("$FindBin::Bin/gitp2p-config")->slurp);
-    my $s = GitP2P::Core::Finder::connect_to_relay(\$cfg);
+    my $s = GitP2P::Core::Finder::connect_to_relay(\$cfg, $cfg->{port_daemon});
     my $relay_add_msg = GitP2P::Proto::Relay::build("add-peer",
         ["clone-simple", $user_id, $last_ref]);
     $s->send($relay_add_msg);
