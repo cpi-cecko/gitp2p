@@ -155,7 +155,7 @@ $loop->listen(
 
     on_stream => sub {
         my ($stream) = @_;
-        $log->info("HAS STREM $stream");
+        $log->info("HAS STREAM $stream");
 
         $stream->configure(
             on_read => sub {
