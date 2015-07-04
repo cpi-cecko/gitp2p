@@ -57,6 +57,7 @@ func get_repo_info(Str $url) {
 func do_capabilities() {
     echo "fetch";
     echo "list";
+    echo "push";
     echo_empty;
 }
 
@@ -257,6 +258,13 @@ func receive_objects(ArrayRef[Str] $peers, Str $repo, Str $owner,
     receive_objects(\@available_peers, $repo, $owner, $remaining_packet, $refs);
 }
 
+func do_push(HashRef[Str] $pushes) {
+    use Data::Dumper;
+    warn "Pushes: " . Dumper($pushes);
+}
+
+
+my $pushre = qr/^\w+\s (?<force> \+?) (?<local> .*) : (?<remote> .*)$/x;
 
 while (<STDIN>) {
     chomp;
@@ -286,6 +294,21 @@ while (<STDIN>) {
 
         echo_empty;
     } 
+    elsif ($cmd =~ /push/) {
+        /$pushre/;
+        my %pushes = ($+{"local"} => $+{force} . $+{remote});
+
+        while (<STDIN>) {
+            last if /^\s*$/;
+
+            /$pushre/;
+            $pushes{$+{"local"}} = $+{force} . $+{remote};
+        }
+
+        do_push(\%pushes);
+
+        echo_empty;
+    }
     else {
         $log->logdie("Invalid capability '$cmd'");
     }
