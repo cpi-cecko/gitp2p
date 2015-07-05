@@ -75,9 +75,9 @@ func on_list(Object $sender, GitP2P::Proto::Daemon $msg) {
     my @refs = GitP2P::Core::Common::show_refs($repo_dir);
 
     my $refs_to_send = '';
-    # Send only remote refs
+    # Don't send remote refs
     for my $ref (@refs) {
-        $ref =~ /remotes/
+        $ref !~ /remotes/
             and $refs_to_send .= $ref . "\n";
     }
     $log->info(("Refs: $refs_to_send"));
