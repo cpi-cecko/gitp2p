@@ -61,47 +61,46 @@ func do_capabilities() {
     echo_empty;
 }
 
+
+func get_repo_dir(Str $url) {
+    my $repo_dir;
+    if (path(".git")->exists) {
+        $repo_dir = ".";
+    } else {
+        (undef, $repo_dir) = get_repo_info($url);
+    }
+    return $repo_dir;
+}
+
 # The relay contains a list of peers for a repo. Each peer has advertised its
 # latest tags and remote refs.
 func do_list() {
-    my ($owner, $repo) = get_repo_info($url);
-    my $msg = GitP2P::Proto::Relay::build("get-peers", [$repo, $owner]);
+    # Get the latest refs which I have
+    my $repo_dir = get_repo_dir($url);
+    my @refs = GitP2P::Core::Common::show_refs($repo_dir);
+    @refs = grep { $_ !~ /remotes/ } @refs; # Only send local refs
+    map { $_ =~ s/\t+/?/g } @refs; # Delimit the refname from the sha with '?'
 
-    my $s = GitP2P::Core::Finder::connect_to_relay(\$cfg);
-    $s->send($msg);
+    # Send the list of my latest refs to the relay.
+    my (undef, $repo) = get_repo_info($url);
+    my $relay_msg = GitP2P::Proto::Relay::build("list-refs", [$repo, @refs]);
+    my $relay_conn = GitP2P::Core::Finder::connect_to_relay(\$cfg);
+    $relay_conn->send($relay_msg);
 
-    my $resp = <$s>;
-    chomp $resp;
+    # Receive the acknowledged list of latest refs.
+    $log->info("Trying to receive latest unique refs");
+    my $ack_list = <$relay_conn>; 
+    chomp $ack_list;
+    close $relay_conn;
 
-    close $s;
+    $log->logdie("NACK on trying to get list of refs")
+        if $ack_list =~ /NACK/;
 
-    $log->logdie("Bad resp: '$resp'")
-        if ($resp =~ /^NACK/);
-
-    my @peers = split /,/, $resp;
-
-    my $pS = GitP2P::Core::Finder::establish_connection($peers[0]);
-    while (!$pS && shift @peers) {
-        $pS = GitP2P::Core::Finder::establish_connection($peers[0]);
-    }
-    $log->logdie("Can't connect with peers for repo")
-        if !$pS && $#peers == -1;
-
-    my $list_msg = GitP2P::Proto::Daemon::build_comm("list", [$repo]);
-    $pS->send($list_msg);
-    
-    $resp = <$pS>;
-    chomp $resp;
-
-    close $pS;
-
-    my $refs = GitP2P::Proto::Daemon->new;
-    $refs->parse(\$resp);
-
-    my $cnts = $refs->op_data;
-
-    for my $ref (split /\n/, $cnts) {
-        $ref =~ s/\t+/ /g;
+    # Echo the list to git.
+    $log->info("Echoing received unique refs to git");
+    for my $ref (split /:/, $ack_list) {
+        $ref =~ s/\?/ /g;
+        $log->info("Echoing: [$ref]");
         echo "$ref";
     }
     echo_empty;
@@ -133,7 +132,7 @@ func get_haves(Str $repo_dir) {
 func create_objects_packet(ArrayRef[Str] $refs) {
     my $repo_dir;
     if (path(".git")->exists) {
-        $repo_dir = "/";
+        $repo_dir = ".";
     } else {
         (undef, $repo_dir) = get_repo_info($url);
     }
@@ -174,14 +173,23 @@ func do_fetch(ArrayRef[Str] $refs) {
     my @peers = split /,/, $resp;
     receive_objects(\@peers, $repo, $owner, $packet, $refs);
 
+# Don't do ugly hacks
+    return;
+
     # Ugly hack which adds by hand the HEAD reference to .git/packed-refs
     my $master_ref = (grep { $_ =~ qr(refs/heads/master$) } @$refs)[0];
     system "echo $master_ref >> $repo/.git/packed-refs";
+
+# Don't add thyself to the relay
+    return;
 
     # Anounce thyself to the relay
     my $dir = pushd $repo;
     my $user_id = qx(git config --get user.email);
     chomp $user_id;
+    # -----------
+    # REMEMBER to add ref name to the ref sha.
+    # -----------
     my $last_ref = qx(git rev-list HEAD --max-count=1);
     chomp $last_ref;
     $s = GitP2P::Core::Finder::connect_to_relay(\$cfg, $cfg->{port_daemon});
@@ -232,8 +240,10 @@ func receive_objects(ArrayRef[Str] $peers, Str $repo, Str $owner,
             chomp $obj;
             while ($obj !~ /^end$/) {
                 my $parsed_obj = GitP2P::Proto::Daemon->new;
+                $log->info("received object: '$obj'");
                 $parsed_obj->parse(\$obj);
                 my $cnts = $parsed_obj->op_data;
+                $log->info("pack contents: '$cnts'");
                 
                 my $pid = open2(\*CHLD_OUT, \*CHLD_IN, 
                     "git", "index-pack", "-v", "--stdin", "--fix-thin", "--keep");

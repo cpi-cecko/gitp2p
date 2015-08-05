@@ -52,8 +52,16 @@ if ($is_add) {
     # Add daemon to relay
     my $user_id = qx(git config --get user.email);
     chomp $user_id;
-    my $last_ref = qx(git rev-list HEAD --max-count=1);
-    chomp $last_ref;
+    # We use only the ref to which our HEAD points for testing purposes.
+    # A proper implementation should query all available refs and send them to
+    # the relay.
+    my $last_ref_sha = qx(git rev-list HEAD --max-count=1);
+    chomp $last_ref_sha;
+    my $last_ref_name = qx(git symbolic-ref HEAD);
+    chomp $last_ref_name;
+    my $last_ref = $last_ref_name . "?" . $last_ref_sha;
+    $log->info("Dir: '$dir'");
+    $log->info("Last ref: '$last_ref'");
 
     my $cfg = JSON::XS->new->ascii->decode(path("$FindBin::Bin/gitp2p-config")->slurp);
     my $s = GitP2P::Core::Finder::connect_to_relay(\$cfg, $cfg->{port_daemon});
@@ -70,23 +78,42 @@ if ($is_add) {
 
 # Lists refs for a given repo
 func on_list(Object $sender, GitP2P::Proto::Daemon $msg) {
-    my $repo_name = $msg->op_data;
-    my $repo_dir = $cfg->{repos}->{$repo_name} . "/../";
-    my @refs = GitP2P::Core::Common::show_refs($repo_dir);
+    my ($repo, @refs) = split /\n/, $msg->op_data;
 
-    my $refs_to_send = '';
-    # Don't send remote refs
-    for my $ref (@refs) {
-        $ref !~ /remotes/
-            and $refs_to_send .= $ref . "\n";
+    $log->logdie("Invalid repo line format: '$repo'")
+        if $repo !~ /^repo \S+$/;
+    my (undef, $repo_name) = split / /, $repo;
+
+    $log->info("Processing refs: [@refs]");
+    my $dir = pushd $cfg->{repos}->{$repo_name} . "../";
+
+    for my $ref_line (@refs) {
+        my ($ref_name, $ref_shas) = split / /, $ref_line;
+        # We love inner loops!
+        my $add = 1;
+        # Determine whether we have all the listed refs.
+        # If so, then there's a chance that we have a newer ref.
+        for (split /,/, $ref_shas) {
+            $log->info("Split ref_shas");
+            my $found = qx(git cat-file -e $_ 2>/dev/null && echo "true" || echo "false");
+            if ($found eq "false") {
+                $add = 0;
+                last;
+            }
+        }
+        # TODO: Don't add if the ref is already in the list
+        if ($add) {
+            my $latest_ref = qx(git rev-list $ref_name --max-count=1);
+            $log->info("Sending latest ref: '$latest_ref'");
+
+            my $list_ack_msg = GitP2P::Proto::Daemon::build_comm(
+                "list_ack", [$ref_name, $latest_ref]);
+            $sender->write($list_ack_msg);
+        }
     }
-    $log->info(("Refs: $refs_to_send"));
 
-    my $refs_msg = GitP2P::Proto::Daemon::build_data(
-        "recv_refs", \$refs_to_send);
-
-    $log->info(("Refs message: $refs_msg"));
-    $sender->write($refs_msg . "\n");
+    $log->info("Sending end");
+    $sender->write("end\n");
 }
 
 # Returns wanted object by client
