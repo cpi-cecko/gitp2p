@@ -38,3 +38,6 @@ t/testRepos/
 *.log
 
 t/test-users/
+
+# peer storage
+*.sqlite
