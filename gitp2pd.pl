@@ -161,6 +161,7 @@ func on_fetch(Object $sender, GitP2P::Proto::Daemon $msg) {
 
     my $pack_msg = GitP2P::Proto::Daemon::build_data(
         "recv_pack", \$pack_data);
+    $log->info("pack_msg: '$pack_msg'");
     sleep $cfg->{debug_sleep} if exists $cfg->{debug_sleep};
     $sender->write($pack_msg . "\n");
     $sender->write("end\n");
@@ -190,6 +191,7 @@ $loop->listen(
                 return 0 if $eof;
 
                 my $msg = GitP2P::Proto::Daemon->new;
+                $log->info("Message: $$buffref");
                 $msg->parse(\$$buffref);
 
                 if (not exists $operations{$msg->op_name}) {
