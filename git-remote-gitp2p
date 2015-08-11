@@ -100,8 +100,13 @@ func do_list() {
     $log->info("Echoing received unique refs to git");
     for my $ref (split /:/, $ack_list) {
         $ref =~ s/\?/ /g;
+
         $log->info("Echoing: [$ref]");
         echo "$ref";
+        if ($ref =~ /refs\/heads\/master/) {
+            echo "\@refs/heads/master HEAD";
+            $log->info("Echoing default ref");
+        }
     }
     echo_empty;
 }
