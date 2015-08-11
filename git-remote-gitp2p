@@ -103,11 +103,12 @@ func do_list() {
 
         $log->info("Echoing: [$ref]");
         echo "$ref";
-        if ($ref =~ /refs\/heads\/master/) {
-            echo "\@refs/heads/master HEAD";
-            $log->info("Echoing default ref");
-        }
     }
+
+    my $symref = `git symbolic-ref HEAD`;
+    chomp $symref;
+    echo "\@$symref HEAD";
+
     echo_empty;
 }
 
