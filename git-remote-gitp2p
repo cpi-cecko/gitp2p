@@ -178,13 +178,6 @@ func do_fetch(ArrayRef[Str] $refs) {
     my @peers = split /,/, $resp;
     receive_objects(\@peers, $repo, $owner, $packet, $refs);
 
-# Don't do ugly hacks
-    return;
-
-    # Ugly hack which adds by hand the HEAD reference to .git/packed-refs
-    my $master_ref = (grep { $_ =~ qr(refs/heads/master$) } @$refs)[0];
-    system "echo $master_ref >> $repo/.git/packed-refs";
-
 # Don't add thyself to the relay
     return;
 
