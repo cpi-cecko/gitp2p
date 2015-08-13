@@ -215,6 +215,9 @@ func on_list_refs(Object $sender, Str $op_data) {
                         if defined ${$unique_refs->{$_}}
                 } %{$unique_refs};
 
+    # TODO: Check if each received ref is in the DB. Also check whether there's
+    # only one ref for each branch.
+
     # TODO: Use protocol to send data back to client
     $log->info("Refs msg: [$unique_refs_msg]");
     $sender->write($unique_refs_msg . "\n");
