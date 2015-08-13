@@ -28,10 +28,7 @@ daemon-cfg
 gitp2pd.log
 gitp2pd.pid
 
-docs/*.log
-docs/*.aux
-docs/*.out
-docs/*.pdf
+docs/out/
 
 t/testRepos/
 
