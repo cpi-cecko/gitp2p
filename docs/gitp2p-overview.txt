@@ -1,0 +1,17 @@
+gitp2p Overview
+===============
+
+There are 3 components in gitp2p - gitp2p-remote-helper, gitp2p-relay and
+gitp2pd.
+
+The job of gitp2p-remote-helper is to provide the protocol with which git
+would transfer objects around. The job of gitp2p-relay is to provide centralized
+site for peers. In it there's up-to-date info about each repo with its peers'
+address, id and latest refs. gitp2pd is the daemon controlling each peer.
+
+Upon creating a new repository or cloning an existing one, each peer can
+subscribe to gitp2p-relay. (TODO: How we subscribe?) After that, on each repo
+update, the peer MUST send its latest refs to gitp2p-relay in order to update
+the info in the database. The latest refs DB is currently a main component in
+the mechanism for determining how ahead is each repository and what to fetch
+each peer.
