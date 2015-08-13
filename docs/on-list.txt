@@ -1,0 +1,16 @@
+Documentation About gitp2p List Capability
+==========================================
+
+Overview
+--------
+
+During `list' gitp2p-remote-helper first looks for the latest ref it has for
+each branch/tag. It then sends this info to gitp2p-relay. The relay keeps a DB
+with all peers and their respective repositories' latest refs. It queries this
+DB and compiles a list containing each ref and the accumulated sha1 ids of the
+peers' refs. This list is sent to each peer. Each peer has to filter out every
+id that it doesn't have. It then sends back the ids it does have. The relay
+gets the unique refs from this list and ensures that for each ref there's only
+one ref. **This should be the case if the latest ref DB is consistently
+updated after each fetch/push** It then sends this list back to
+gitp2p-remote-helper and the helper echoes it to git.
