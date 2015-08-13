@@ -1,37 +1,48 @@
 Current:
-V 1. Heartbeating:
-    - Between relay and peers
-    - Between peers during fetch
-V 2. Data determination algorithm
-    - What happens when a peer dies during transfer?
-V 3. Go through TODOs
-V 4. Testing of fetch functionality
-    -- By hand
-    -- Using a test suite
+  1. Rework `fetch' functionality
+    -- Figure out an algorithm for communicating wants/haves. It should lock 
+       peers in process of receiving objects.
+  2. Write tests:
+    -- Cloning a repo from many peers
+    -- Fetching an update from a single peer
+    -- Fetching an update from many peers while all have the full history
+    -- Fetching an update from many peers while all are ahead of you, but
+       not all have the full history
+    -- Fetching an update from many peers while some of them are behind you, 
+       some of them ahead
+    -- Fetching a repo while someone is cloning
+    -- Cloning a repo while someone is fetching
 
 -------------------------------------------------------------------------------
-1. gitp2p-config gets moved a lot
-2. Torrent tracker web interface
-3. Repo for signed docs
-V 4. Don't unpack packs!
-5. Handshake before connections
-6. Handle alternatives
-7. After discovery of the initial network peer, we should be able to rely on
-   peers instead of a relay.
-8. Trusted updates of branches and tags
-9. Uniquely identifiable repositories
-10. Object transfer
-    - Pack files limited in size, generated on-the-fly
-    - Big objects
-    - Advertising list of available pack files and determining what a peer 
-      needs
-11. Cloning a repo while peer has a partial info about it
-12. Prioritize rare pieces
-13. Metainfo file
-14. Make the relay just a peer? A peer could opt for being a relay via some
-    config file. Each relay-peer could have some kind of trust points.
-15. Tool to collect statistics about the network - repos, active peers, etc.
-16. Peer impersonation exploit
-17. Pruning inactive peers
-18. Use JSON::XS with Encode
-19. Refactor ref advertisment by peers
+Peer-to-peer:
+  1. Metainfo file
+  2. Make the relay just a peer? A peer could opt for being a relay via some
+      config file. Each relay-peer could have some kind of trust points.
+  3. Pruning inactive peers
+  4. Prioritize rare pieces
+  5. Cloning a repo while peer has a partial info about it
+  6. After discovery of the initial network peer, we should be able to rely on
+     peers instead of a relay.
+  7. Object transfer
+      - Pack files limited in size, generated on-the-fly
+      - Big objects
+      - Advertising list of available pack files and determining what a peer 
+        needs
+
+git-specific:
+  1. Handle alternatives
+
+Security:
+  1. Handshake before connections
+  2. Trusted updates of branches and tags
+  3. Peer impersonation exploit
+  4. Uniquely identifiable repositories
+
+Others:
+  1. gitp2p-config gets moved a lot
+  2. Use JSON::XS with Encode
+
+Ideas:
+  1. Torrent tracker web interface
+  2. Repo for signed docs
+  3. Tool to collect statistics about the network - repos, active peers, etc.
