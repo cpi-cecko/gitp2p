@@ -14,6 +14,23 @@ use IPC::Open2;
 use List::MoreUtils qw/uniq/;
 
 
+# Gets the index of the most_recent element in an array determined by the
+# `indexer' subroutine.
+func most_recent($indexer, ArrayRef[Str] $array) {
+    my $max_index = 0;
+    my $max_elem = "";
+
+    for my $elem (@$array) {
+        my $new_max_index = &$indexer($elem);
+        if ($new_max_index >= $max_index) {
+            $max_index = $new_max_index;
+            $max_elem = $elem;
+        }
+    }
+
+    return $max_elem;
+}
+
 func show_refs(Str $repo_dir) {
     my $out;
     {
