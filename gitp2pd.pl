@@ -12,7 +12,7 @@ use Path::Tiny;
 use Method::Signatures;
 use IO::Async::Stream;
 use IO::Async::Loop;
-use List::MoreUtils qw/indexes/;
+use List::MoreUtils qw/indexes firstidx/;
 use JSON::XS;
 use Log::Log4perl;
 use File::pushd;
@@ -87,27 +87,36 @@ func on_list(Object $sender, GitP2P::Proto::Daemon $msg) {
     $log->info("Processing refs: [@refs]");
     my $dir = pushd $cfg->{repos}->{$repo_name} . "../";
 
+    my @rev_list = split /\n/, qx(git rev-list HEAD);
     for my $ref_line (@refs) {
         my ($ref_name, $ref_shas) = split / /, $ref_line;
-        # We love inner loops!
-        my $add = 1;
-        # Determine whether we have all the listed refs.
-        # If so, then there's a chance that we have a newer ref.
-        for (split /,/, $ref_shas) {
-            $log->info("Split ref_shas");
+
+        my @split_shas = split /,/, $ref_shas;
+        my @have_refs = grep {
+            # TODO: Use `git-cat-file --batch'
             my $found = qx(git cat-file -e $_ 2>/dev/null && echo "true" || echo "false");
-            if ($found eq "false") {
-                $add = 0;
-                last;
+            chomp $found;
+            if ($found eq "true") {
+                $log->info("Found ref: $_");
+                $_;
             }
-        }
-        # TODO: Don't add if the ref is already in the list
-        if ($add) {
-            my $latest_ref = qx(git rev-list $ref_name --max-count=1);
-            $log->info("Sending latest ref: '$latest_ref'");
+        } @split_shas;
+
+        use Data::Dumper;
+        $log->info("Have refs: " . Dumper(@have_refs));
+        $log->info("Split shas: " . Dumper(@split_shas));
+        if (scalar(@have_refs) == scalar(@split_shas)) {
+            $log->info("Rev list: " . Dumper(@rev_list));
+            my $latest_ref = 
+                GitP2P::Core::Common::most_recent(
+                    sub { 
+                        my $elem = shift;
+                        firstidx { $_ eq $elem } reverse @rev_list;
+                    }, \@split_shas);
+            $log->info("Latest ref: [$latest_ref]");
 
             my $list_ack_msg = GitP2P::Proto::Daemon::build_comm(
-                "list_ack", [$ref_name, $latest_ref]);
+                "list_ack", [$ref_name, $latest_ref, "\n"]);
             $sender->write($list_ack_msg);
         }
     }
