@@ -89,30 +89,33 @@ func on_add_peer(Object $sender, Str $op_data) {
 }
 
 func on_get_peers(Object $sender, Str $op_data) {
-    if ($op_data =~ /^(.*):(.*)$/) {
-        my ($repo_name, $owner_id) = ($1, $2);
-        $log->info("Searching repo: $repo_name from $owner_id\n");
-
-        !path('peers.sqlite')->exists && !$peer_store->exists('Repo' => $repo_name)
-            and $log->info("No peers\n")
-                and $sender->write("NACK: no peers file found\n")
-                    and return;
-
-        my $repo = $peer_store->get('Repo' => $repo_name);
-        my @peers_addr;
-        for my $peer (@{$repo->{peers}}) {
-            push @peers_addr, $peer->{addr} . ':' . $peer->{port};
-        }
-
-        @peers_addr = get_hugged_peers(\@peers_addr);
-        scalar @peers_addr == 0
-            and $log->info("No peers for repo\n")
-                and $sender->write("NACK: no peers for repo\n") 
-                    and return;
-
-        $log->info("Sending " . (join ',', @peers_addr) . "\n");
-        $sender->write((join ',', @peers_addr) . "\n");
+    if ($op_data !~ /^(.*):(.*)$/) {
+        $sender->write("NACK: Invalid data format [$op_data]");
+        return;
     }
+
+    my ($repo_name, $owner_id) = ($1, $2);
+    $log->info("Searching repo: $repo_name from $owner_id\n");
+
+    !path('peers.sqlite')->exists && !$peer_store->exists('Repo' => $repo_name)
+        and $log->info("No peers\n")
+            and $sender->write("NACK: no peers file found\n")
+                and return;
+
+    my $repo = $peer_store->get('Repo' => $repo_name);
+    my @peers_addr;
+    for my $peer (@{$repo->{peers}}) {
+        push @peers_addr, $peer->{addr} . ':' . $peer->{port};
+    }
+
+    @peers_addr = get_hugged_peers(\@peers_addr);
+    scalar @peers_addr == 0
+        and $log->info("No peers for repo\n")
+            and $sender->write("NACK: no peers for repo\n") 
+                and return;
+
+    $log->info("Sending " . (join ',', @peers_addr) . "\n");
+    $sender->write((join ',', @peers_addr) . "\n");
 }
 
 func get_hugged_peers(ArrayRef[Str] $peer_addresses) {
