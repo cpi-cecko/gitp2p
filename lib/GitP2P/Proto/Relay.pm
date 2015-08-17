@@ -34,6 +34,7 @@ has 'version' => ('is' => 'rw', 'isa' => 'Str');
 
 
 method parse(Str $data) {
+    $data =~ s/[\r\n]+//;
     my ($version, $op_name, $op_data) = split / /, $data;
 
     die "Incompatible version $version"
