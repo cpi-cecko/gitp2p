@@ -45,11 +45,16 @@ my $cfg = JSON::XS->new->ascii->decode(path($cfg_file)->slurp);
 #   Repo: [
 #       <repo_name>: {
 #           repo: <repo_name>,
-#           peers: [
-#              { name: <peer_name>
-#              , addr: <peer_addr>
-#              , port: <peer_port>
-#              , refs: [<peer_ref>]
+#           peers: {
+#              <peer_name>: {
+#                  name: <peer_name>
+#                , addr: <peer_addr>
+#                , port: <peer_port>
+#              }
+#           }
+#           refs: [
+#              { ref_name: <ref_name>
+#              , ref_shas: [<ref_sha>]
 #              }
 #           ]
 #       }
@@ -59,31 +64,61 @@ my $cfg = JSON::XS->new->ascii->decode(path($cfg_file)->slurp);
 my $peer_store = DBIx::NoSQL->connect('peers.sqlite');
 
 
+# TODO: Add proper types
+func merge($repo, Str $peer_name, HashRef[Str] $peer_entry, $ref_entries) {
+    %{$$repo->{peers}->{$peer_name}} = %{$peer_entry};
+
+    for my $ref (@$ref_entries) {
+        # TODO: What if there is more than one ref with the same name?
+        my $eq_ref = (grep { $_->{ref_name} eq $ref->{ref_name} } @{$$repo->{refs}})[0];
+        if ($eq_ref) {
+            @{$eq_ref->{ref_shas}} =
+                (@{$eq_ref->{ref_shas}}, @{$ref->{ref_shas}});
+        } else {
+            push @{$$repo->{refs}}, $ref;
+        }
+    }
+}
+
 func on_add_peer(Object $sender, Str $op_data) {
     # repo:user_id:refs
-    $log->info("Add peer data: $op_data");
+    $log->info("Add peer data: [$op_data]");
     if ($op_data =~ /^(?<repo>.*?):(?<user>.*?):(?<refs>.*)/) {
         my $addr = $sender->read_handle->peerhost;
         my $port = $sender->read_handle->peerport;
 
         my $peer_entry = {
-            name => $+{user}
-          , addr => $addr
-          , port => $port
-          , refs => [split /:/, $+{refs}]
-        };
+                name => $+{user}
+              , addr => $addr
+              , port => $port
+            };
+
+        # TODO: When the peer sends a list with duplicating refs, send back a
+        #       NACK. We can't determine which ref would be better.
+        my $ref_entries = [];
+        for my $ref (split /:/, $+{refs}) {
+            my ($ref_name, $ref_sha) = split /\?/, $ref;
+            push @$ref_entries,
+                    { ref_name => $ref_name
+                    , ref_shas => [$ref_sha]
+                    }
+        }
 
         if ($peer_store->exists('Repo' => $+{repo})) {
             my $repo = $peer_store->get('Repo' => $+{repo});
-            push @{$repo->{peers}}, $peer_entry;
+            merge(\$repo, $+{user}, $peer_entry, $ref_entries);
+            $peer_store->set('Repo', $+{repo}, $repo);
         } else {
             $peer_store->set('Repo', $+{repo}, {
                     repo => $+{repo}
-                  , peers => [$peer_entry]
+                  , peers => {$+{user} => $peer_entry}
+                  , refs => $ref_entries
                 });
         }
+
         use Data::Dumper;
-        $log->info("Received entry:\n" . Dumper($peer_entry));
+        $log->info("Received peer:\n" . Dumper($peer_entry));
+        $log->info("Received shas:\n" . Dumper($ref_entries));
         $sender->write("ACK!\n");
     }
 }
@@ -104,7 +139,7 @@ func on_get_peers(Object $sender, Str $op_data) {
 
     my $repo = $peer_store->get('Repo' => $repo_name);
     my @peers_addr;
-    for my $peer (@{$repo->{peers}}) {
+    for my $peer (values %{$repo->{peers}}) {
         push @peers_addr, $peer->{addr} . ':' . $peer->{port};
     }
 
@@ -150,18 +185,11 @@ func on_list_refs(Object $sender, Str $op_data) {
                 and return;
 
     my $repo = $peer_store->get('Repo' => $repo_name);
-    my $refs = {};
-    for my $peer (@{$repo->{peers}}) {
-        for my $peer_refs (@{$peer->{refs}}) {
-            my ($refname, $refsha) = split /\?/, $peer_refs;
-            push @{$refs->{$refname}}, $refsha;
-        }
-    }
 
     my $refs_packet = GitP2P::Proto::Packet->new;
     $refs_packet->write("repo $repo_name");
-    while (my ($ref_name, $ref_sha) = (each %{$refs})) {
-        $refs_packet->write("$ref_name " . join ",", @{$ref_sha});
+    for my $ref (@{$repo->{refs}}) {
+        $refs_packet->write("$ref->{ref_name} " . join ",", @{$ref->{ref_shas}});
     }
 
     # Send the list to all peers except the sender
@@ -169,7 +197,7 @@ func on_list_refs(Object $sender, Str $op_data) {
     my $sender_addr = 
         $sender->read_handle->peerhost . ':' . $sender->read_handle->peerport;
     my $pSelect = IO::Select->new;
-    for my $peer (@{$repo->{peers}}) {
+    for my $peer (values %{$repo->{peers}}) {
         my $addr = $peer->{addr} . ':' . $peer->{port}; 
 
         next 
