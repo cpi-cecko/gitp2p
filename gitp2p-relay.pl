@@ -94,6 +94,20 @@ func i_extract_ref_entries(Str $refs_proto) {
     return $ref_entries;
 }
 
+func i_has_duplicate_entries(Str $refs_proto) {
+    my %refs;
+
+    for my $ref (split /:/, $refs_proto) {
+        my ($ref_name, undef) = split /\?/, $ref;
+        if (defined $refs{$ref_name}) {
+            return 1;
+        }
+        $refs{$ref_name} = 1;
+    }
+
+    return 0;
+}
+
 func on_add_peer(Object $sender, Str $op_data) {
     # repo:user_id:refs
     $log->info("Add peer data: [$op_data]");
@@ -107,8 +121,10 @@ func on_add_peer(Object $sender, Str $op_data) {
               , port => $port
             };
 
-        # TODO: When the peer sends a list with duplicating refs, send back a
-        #       NACK. We can't determine which ref would be better.
+        i_has_duplicate_entries($+{refs})
+            and $sender->write("NACK: Duplicate refs sent\n")
+                and return;
+
         my $ref_entries = i_extract_ref_entries($+{refs});
 
         if ($peer_store->exists('Repo' => $+{repo})) {
