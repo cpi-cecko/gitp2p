@@ -108,6 +108,7 @@ func i_has_duplicate_entries(Str $refs_proto) {
 }
 
 # Select generalization
+# Fill it
 func i_select_fill($pSelect, ArrayRef[Str] $peer_addresses, Str $msg,
                    Maybe[Int] $port = undef) {
     for my $peer (@$peer_addresses) {
@@ -115,6 +116,14 @@ func i_select_fill($pSelect, ArrayRef[Str] $peer_addresses, Str $msg,
         next if $pS == 0;
         $$pSelect->add($pS);
         $pS->send($msg);
+    }
+}
+# Retrieve it
+func i_select_retrieve($pSelect, Int $TIMEOUT_SECS, $on_peer) {
+    while (my @ready = $$pSelect->can_read($TIMEOUT_SECS)) {
+        for my $peer (@ready) {
+            &$on_peer($peer);
+        }
     }
 }
 
