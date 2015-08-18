@@ -199,10 +199,14 @@ func get_hugged_peers(ArrayRef[Str] $peer_addresses) {
 
     my @hugged_handles;
     my $TIMEOUT_SECS = 3;
-    while (my @ready = $pSelect->can_read($TIMEOUT_SECS)) {
-        @hugged_handles = (@hugged_handles, @ready);
-        map { $pSelect->remove($_) } @ready;
-    }
+
+    i_select_retrieve(\$pSelect, $TIMEOUT_SECS,
+        sub {
+            my $peer = shift;
+            push @hugged_handles, $peer;
+            $pSelect->remove($peer);
+        });
+
     my @hugged = map { $_->peerhost . ":" . $_->peerport } @hugged_handles;
     return @hugged;
 }
@@ -229,21 +233,23 @@ func on_list_refs(Object $sender, Str $op_data) {
         $sender->read_handle->peerhost . ':' . $sender->read_handle->peerport;
     my @peer_addresses = map { $_->{addr} } (values %{$repo->{peers}});
     @peer_addresses = grep { $_ ne $sender_addr } @peer_addresses;
-    my $pSelect = IO::Select->new;
 
     my $ref_list_msg = GitP2P::Proto::Daemon::build_data(
         "list", \$refs_packet->to_send);
+    my $pSelect = IO::Select->new;
     i_select_fill(\$pSelect, \@peer_addresses, $ref_list_msg);
 
     # Reap the latest refs list
     $log->info("Reaping latest refs list");
     my $TIMEOUT_SECS = 3;
     my $unique_refs = {};
-    while (my @ready = $pSelect->can_read($TIMEOUT_SECS)) {
-        for my $peer (@ready) {
+    
+    i_select_retrieve(\$pSelect, $TIMEOUT_SECS,
+        sub {
+            my $peer = shift;
             my $ref = <$peer>;
             chomp $ref;
-            $log->info("Reaped_out ref: [$ref]");
+
             while ($ref !~ /^end$/) {
                 my $parsed_ref = GitP2P::Proto::Daemon->new;
                 $parsed_ref->parse(\$ref);
@@ -253,12 +259,8 @@ func on_list_refs(Object $sender, Str $op_data) {
 
                 $ref = <$peer>;
                 chomp $ref;
-                $log->info("Reaped_in ref: [$ref]");
             }
-            $log->info("Processing ready peers");
-        }
-        $log->info("Waiting peers");
-    }
+        });
 
     # Send a list of unique latest refs to sender
     $log->info("Sending unique latest refs to sender");
