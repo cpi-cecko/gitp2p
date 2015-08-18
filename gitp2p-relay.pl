@@ -108,9 +108,11 @@ func i_has_duplicate_entries(Str $refs_proto) {
 }
 
 # Select generalization
-func i_select_fill($pSelect, ArrayRef[Str] $peer_addresses, Str $msg) {
+func i_select_fill($pSelect, ArrayRef[Str] $peer_addresses, Str $msg,
+                   Maybe[Int] $port = undef) {
     for my $peer (@$peer_addresses) {
-        my $pS = GitP2P::Core::Finder::establish_connection($peer);
+        my $pS = GitP2P::Core::Finder::establish_connection($peer, $port);
+        next if $pS == 0;
         $$pSelect->add($pS);
         $pS->send($msg);
     }
@@ -181,13 +183,8 @@ func on_get_peers(Object $sender, Str $op_data) {
 
 func get_hugged_peers(ArrayRef[Str] $peer_addresses) {
     my $pSelect = IO::Select->new;
-    for (@$peer_addresses) {
-        my $pS = GitP2P::Core::Finder::establish_connection($_, $cfg->{port_hugz});
-        next if $pS == 0;
-        my $hugz = GitP2P::Proto::Daemon::build_comm("hugz", [""]); 
-        $pS->send($hugz . "\n");
-        $pSelect->add($pS);
-    }
+    my $hugz = GitP2P::Proto::Daemon::build_comm("hugz", [""]) . "\n"; 
+    i_select_fill(\$pSelect, $peer_addresses, $hugz, $cfg->{port_hugz});
 
     return () unless $pSelect->count;
 
