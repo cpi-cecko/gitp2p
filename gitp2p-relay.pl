@@ -48,8 +48,7 @@ my $cfg = JSON::XS->new->ascii->decode(path($cfg_file)->slurp);
 #           peers: {
 #              <peer_name>: {
 #                  name: <peer_name>
-#                , addr: <peer_addr>
-#                , port: <peer_port>
+#                , addr: <peer_addr>:<peer_port>
 #              }
 #           }
 #           refs: [
@@ -108,17 +107,24 @@ func i_has_duplicate_entries(Str $refs_proto) {
     return 0;
 }
 
+# Select generalization
+func i_select_fill($pSelect, ArrayRef[Str] $peer_addresses, Str $msg) {
+    for my $peer (@$peer_addresses) {
+        my $pS = GitP2P::Core::Finder::establish_connection($peer);
+        $$pSelect->add($pS);
+        $pS->send($msg);
+    }
+}
+
 func on_add_peer(Object $sender, Str $op_data) {
     # repo:user_id:refs
     $log->info("Add peer data: [$op_data]");
     if ($op_data =~ /^(?<repo>.*?):(?<user>.*?):(?<refs>.*)/) {
-        my $addr = $sender->read_handle->peerhost;
-        my $port = $sender->read_handle->peerport;
+        my $addr = $sender->read_handle->peerhost . ':' . $sender->read_handle->peerport;
 
         my $peer_entry = {
                 name => $+{user}
               , addr => $addr
-              , port => $port
             };
 
         i_has_duplicate_entries($+{refs})
@@ -161,10 +167,7 @@ func on_get_peers(Object $sender, Str $op_data) {
                 and return;
 
     my $repo = $peer_store->get('Repo' => $repo_name);
-    my @peers_addr;
-    for my $peer (values %{$repo->{peers}}) {
-        push @peers_addr, $peer->{addr} . ':' . $peer->{port};
-    }
+    my @peers_addr = map { $_->{addr} } (values %{$repo->{peers}});
 
     @peers_addr = get_hugged_peers(\@peers_addr);
     scalar @peers_addr == 0
@@ -216,24 +219,15 @@ func on_list_refs(Object $sender, Str $op_data) {
     }
 
     # Send the list to all peers except the sender
-    my @peer_addresses;
     my $sender_addr = 
         $sender->read_handle->peerhost . ':' . $sender->read_handle->peerport;
+    my @peer_addresses = map { $_->{addr} } (values %{$repo->{peers}});
+    @peer_addresses = grep { $_ ne $sender_addr } @peer_addresses;
     my $pSelect = IO::Select->new;
-    for my $peer (values %{$repo->{peers}}) {
-        my $addr = $peer->{addr} . ':' . $peer->{port}; 
 
-        next 
-            if $addr eq $sender_addr;
-
-        push @peer_addresses, $addr;
-        my $pS = GitP2P::Core::Finder::establish_connection($addr);
-        $pSelect->add($pS);
-        my $ref_list_msg = GitP2P::Proto::Daemon::build_data(
-            "list", \$refs_packet->to_send);
-        $log->info("Sending ref packet: $ref_list_msg");
-        $pS->send($ref_list_msg);
-    }
+    my $ref_list_msg = GitP2P::Proto::Daemon::build_data(
+        "list", \$refs_packet->to_send);
+    i_select_fill(\$pSelect, \@peer_addresses, $ref_list_msg);
 
     # Reap the latest refs list
     $log->info("Reaping latest refs list");
