@@ -65,7 +65,7 @@ my $peer_store = DBIx::NoSQL->connect('peers.sqlite');
 
 
 # TODO: Add proper types
-func merge($repo, Str $peer_name, HashRef[Str] $peer_entry, $ref_entries) {
+func i_merge($repo, Str $peer_name, HashRef[Str] $peer_entry, $ref_entries) {
     %{$$repo->{peers}->{$peer_name}} = %{$peer_entry};
 
     for my $ref (@$ref_entries) {
@@ -106,7 +106,7 @@ func on_add_peer(Object $sender, Str $op_data) {
 
         if ($peer_store->exists('Repo' => $+{repo})) {
             my $repo = $peer_store->get('Repo' => $+{repo});
-            merge(\$repo, $+{user}, $peer_entry, $ref_entries);
+            i_merge(\$repo, $+{user}, $peer_entry, $ref_entries);
             $peer_store->set('Repo', $+{repo}, $repo);
         } else {
             $peer_store->set('Repo', $+{repo}, {
