@@ -1,5 +1,7 @@
 Current:
   0. Refactor `list' functionality
+    -- Unify ref sending format
+        join ':', (<ref_name> . '?' . <ref_sha>) ALWAYS!!!
   1. Rework `fetch' functionality
     -- Figure out an algorithm for communicating wants/haves. It should lock 
        peers in process of receiving objects.
@@ -13,6 +15,8 @@ Current:
        some of them ahead
     -- Fetching a repo while someone is cloning
     -- Cloning a repo while someone is fetching
+  3. Write RAW tests for protocol (Just flood the relay with various messages 
+      and inspect the result)
 
 -------------------------------------------------------------------------------
 Peer-to-peer:
