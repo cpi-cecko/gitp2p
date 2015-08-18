@@ -80,6 +80,20 @@ func i_merge($repo, Str $peer_name, HashRef[Str] $peer_entry, $ref_entries) {
     }
 }
 
+func i_extract_ref_entries(Str $refs_proto) {
+    my $ref_entries;
+
+    for my $ref (split /:/, $+{refs}) {
+        my ($ref_name, $ref_sha) = split /\?/, $ref;
+        push @$ref_entries,
+                { ref_name => $ref_name
+                , ref_shas => [$ref_sha]
+                }
+    }
+
+    return $ref_entries;
+}
+
 func on_add_peer(Object $sender, Str $op_data) {
     # repo:user_id:refs
     $log->info("Add peer data: [$op_data]");
@@ -95,14 +109,7 @@ func on_add_peer(Object $sender, Str $op_data) {
 
         # TODO: When the peer sends a list with duplicating refs, send back a
         #       NACK. We can't determine which ref would be better.
-        my $ref_entries = [];
-        for my $ref (split /:/, $+{refs}) {
-            my ($ref_name, $ref_sha) = split /\?/, $ref;
-            push @$ref_entries,
-                    { ref_name => $ref_name
-                    , ref_shas => [$ref_sha]
-                    }
-        }
+        my $ref_entries = i_extract_ref_entries($+{refs});
 
         if ($peer_store->exists('Repo' => $+{repo})) {
             my $repo = $peer_store->get('Repo' => $+{repo});
