@@ -83,7 +83,7 @@ func i_merge($repo, Str $peer_name, HashRef[Str] $peer_entry, $ref_entries) {
 func i_extract_ref_entries(Str $refs_proto) {
     my $ref_entries;
 
-    for my $ref (split /:/, $+{refs}) {
+    for my $ref (split /:/, $refs_proto) {
         my ($ref_name, $ref_sha) = split /\?/, $ref;
         push @$ref_entries,
                 { ref_name => $ref_name
