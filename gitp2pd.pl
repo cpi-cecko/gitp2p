@@ -76,6 +76,24 @@ if ($is_add) {
 }
 
 
+# WARN: pushd to the correct repo before calling this function!
+func i_determine_newest_refs(ArrayRef[Str] $ref_lines) {
+    my %newest_refs;
+
+    for my $ref_line (@{$ref_lines}) {
+        my ($ref_name, $ref_shas) = split / /, $ref_line;
+
+        $ref_shas =~ s/,/\\|/g;
+        my @have_refs = split /\n/, qx(git rev-list $ref_name | grep "$ref_shas");
+        
+        if (@have_refs) {
+            $newest_refs{$ref_name} = $have_refs[0];
+        }
+    }
+
+    return %newest_refs;
+}
+
 # Lists refs for a given repo
 func on_list(Object $sender, GitP2P::Proto::Daemon $msg) {
     my ($repo, @refs) = split /\n/, $msg->op_data;
@@ -89,41 +107,15 @@ func on_list(Object $sender, GitP2P::Proto::Daemon $msg) {
     $log->info("Processing refs: [@refs]");
     my $dir = pushd $cfg->{repos}->{$repo_name} . "../";
 
-    my @rev_list = split /\n/, qx(git rev-list HEAD);
-    for my $ref_line (@refs) {
-        my ($ref_name, $ref_shas) = split / /, $ref_line;
+    my %newest_refs = i_determine_newest_refs(\@refs);
 
-        my @split_shas = split /,/, $ref_shas;
-        my @have_refs = grep {
-            # TODO: Use `git-cat-file --batch'
-            my $found = qx(git cat-file -e $_ 2>/dev/null && echo "true" || echo "false");
-            chomp $found;
-            if ($found eq "true") {
-                $log->info("Found ref: $_");
-                $_;
-            }
-        } @split_shas;
-
-        use Data::Dumper;
-        $log->info("Have refs: " . Dumper(@have_refs));
-        $log->info("Split shas: " . Dumper(@split_shas));
-        if (scalar(@have_refs) == scalar(@split_shas)) {
-            $log->info("Rev list: " . Dumper(@rev_list));
-            my $latest_ref = 
-                GitP2P::Core::Common::most_recent(
-                    sub { 
-                        my $elem = shift;
-                        firstidx { $_ eq $elem } reverse @rev_list;
-                    }, \@split_shas);
-            $log->info("Latest ref: [$latest_ref]");
-
-            my $list_ack_msg = GitP2P::Proto::Daemon::build_comm(
-                "list_ack", [$ref_name, $latest_ref, "\n"]);
-            $sender->write($list_ack_msg);
-        }
+    for my $ref_name (keys %newest_refs) {
+        my $list_ack_msg = GitP2P::Proto::Daemon::build_comm(
+            "list_ack", [$ref_name, $newest_refs{$ref_name}, "\n"]);
+        $log->info("list_ack: $list_ack_msg");
+        $sender->write($list_ack_msg);
     }
 
-    $log->info("Sending end");
     $sender->write("end\n");
 }
 
