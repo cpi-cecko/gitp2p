@@ -59,7 +59,7 @@ if ($is_add) {
     chomp $last_ref_sha;
     my $last_ref_name = qx(git symbolic-ref HEAD);
     chomp $last_ref_name;
-    my $last_ref = $last_ref_name . "?" . $last_ref_sha;
+    my $last_ref = $last_ref_sha . "?" . $last_ref_name;
     $log->info("Dir: '$dir'");
     $log->info("Last ref: '$last_ref'");
 

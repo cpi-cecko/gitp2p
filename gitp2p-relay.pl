@@ -83,7 +83,7 @@ func i_extract_ref_entries(Str $refs_proto) {
     my $ref_entries;
 
     for my $ref (split /:/, $refs_proto) {
-        my ($ref_name, $ref_sha) = split /\?/, $ref;
+        my ($ref_sha, $ref_name) = split /\?/, $ref;
         push @$ref_entries,
                 { ref_name => $ref_name
                 , ref_shas => [$ref_sha]
@@ -97,7 +97,7 @@ func i_has_duplicate_entries(Str $refs_proto) {
     my %refs;
 
     for my $ref (split /:/, $refs_proto) {
-        my ($ref_name, undef) = split /\?/, $ref;
+        my (undef, $ref_name) = split /\?/, $ref;
         if (defined $refs{$ref_name}) {
             return 1;
         }
