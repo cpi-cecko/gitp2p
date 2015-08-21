@@ -107,6 +107,20 @@ func i_has_duplicate_entries(Str $refs_proto) {
     return 0;
 }
 
+func i_is_ref_in_db($repo, Str $ref_name, Str $ref_sha) {
+    for my $ref (@{$repo->{refs}}) {
+        if ($ref->{ref_name} eq $ref_name) {
+            if (grep { $_ eq $ref_sha } @{$ref->{ref_shas}}) {
+                return 1;
+            }
+
+            return 0;
+        }
+    }
+
+    return 0;
+}
+
 # Select generalization
 # Fill it
 func i_select_fill($pSelect, ArrayRef[Str] $peer_addresses, Str $msg,
@@ -242,7 +256,7 @@ func on_list_refs(Object $sender, Str $op_data) {
     # Reap the latest refs list
     $log->info("Reaping latest refs list");
     my $TIMEOUT_SECS = 3;
-    my $unique_refs = {};
+    my $unique_refs_msg;
     
     i_select_retrieve(\$pSelect, $TIMEOUT_SECS,
         sub {
@@ -250,29 +264,21 @@ func on_list_refs(Object $sender, Str $op_data) {
             my $ref = <$peer>;
             chomp $ref;
 
+            my %received_shas;
             while ($ref !~ /^end$/) {
                 my $parsed_ref = GitP2P::Proto::Daemon->new;
                 $parsed_ref->parse(\$ref);
                 my ($ref_name, $ref_sha) = split /:/, $parsed_ref->op_data;
 
-                ${$unique_refs->{$ref_name}} = $ref_sha;
+                if (i_is_ref_in_db($repo, $ref_name, $ref_sha) && not $received_shas{$ref_sha}) {
+                    $unique_refs_msg .= "$ref_sha?$ref_name:";
+                    $received_shas{$ref_sha} = 1;
+                }
 
                 $ref = <$peer>;
                 chomp $ref;
             }
         });
-
-    # Send a list of unique latest refs to sender
-    $log->info("Sending unique latest refs to sender");
-    my $unique_refs_msg = 
-        join ':',
-            map { $_ = 
-                    ${$unique_refs->{$_}} . "?" . $_
-                        if defined ${$unique_refs->{$_}}
-                } %{$unique_refs};
-
-    # TODO: Check if each received ref is in the DB. Also check whether there's
-    # only one ref for each branch.
 
     # TODO: Use protocol to send data back to client
     $log->info("Refs msg: [$unique_refs_msg]");
