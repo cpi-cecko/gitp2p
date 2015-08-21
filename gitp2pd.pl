@@ -80,8 +80,10 @@ if ($is_add) {
 func on_list(Object $sender, GitP2P::Proto::Daemon $msg) {
     my ($repo, @refs) = split /\n/, $msg->op_data;
 
-    $log->logdie("Invalid repo line format: '$repo'")
-        if $repo !~ /^repo \S+$/;
+    if ($repo !~ /^repo \S+$/) {
+        $log->logdie("Invalid repo line format: '$repo'")
+    }
+
     my (undef, $repo_name) = split / /, $repo;
 
     $log->info("Processing refs: [@refs]");
