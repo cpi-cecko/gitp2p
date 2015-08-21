@@ -1,7 +1,5 @@
 Current:
   0. Refactor `list' functionality
-    -- Unify ref sending format
-        join ':', (<ref_sha> . '?' . <ref_name>) ALWAYS!!!
   1. Rework `fetch' functionality
     -- Figure out an algorithm for communicating wants/haves. It should lock 
        peers in process of receiving objects.
