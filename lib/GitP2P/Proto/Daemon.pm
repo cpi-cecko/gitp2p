@@ -10,19 +10,15 @@
 # header    = version
 # type      = d / c
 # op_name   = Str
-# data      = (1*(ops ":"))                          ; type == c
-#           / (user_id SP data_type SP hash SP cnts) ; type == d
+# data      = (1*(ops ":")) ; type == c
+#           / cnts          ; type == d
 #
-# version = major "." minor "." patch ["." meta]
-# user_id   = Str
-# data_type = Str
-# hash      = obj-id
+# version = major "." minor "." patch
 # cnts      = *base64-Chr
 #
 # major = *DIGIT
 # minor = *DIGIT
 # patch = *DIGIT
-# meta = *(ALNUM / "-" / ".")
 #
 package GitP2P::Proto::Daemon;
 
@@ -43,11 +39,18 @@ my $VERSION = '0.1.0';
 # TODO: Parse the version better
 method parse(Str \$data) {
     my ($version, $msg) = $data =~ /^(\d+\.\d+\.\d+)\s(.*)$/;
+    die "No version"
+        if not defined $version;
+
     die "Incompatible version $version" 
         if $version ne $VERSION;
 
+    die "No op_name in message"
+        if $msg !~ /^[d|c](\w+)\s/;
+
     my ($type, $rest) = (substr($msg, 0, 1), substr($msg, 1));
 
+    $self->version($version);
     if ($type eq "d") {
         my ($op_name, $cnts) = split / /, $rest;
         $self->op_name($op_name);
@@ -66,6 +69,9 @@ method parse(Str \$data) {
 }
 
 func build_data(Str $op_name, Str \$data is ro) {
+    die ("Data message without op_name is invalid!")
+        if $op_name eq "";
+
     my $cnts = encode_base64 $data, "";
     chomp $cnts;
 
@@ -73,6 +79,9 @@ func build_data(Str $op_name, Str \$data is ro) {
 }
 
 func build_comm(Str $op_name, ArrayRef[Str] $query is ro) {
+    die ("Comm message without op_name is invalid!")
+        if $op_name eq "";
+
     $VERSION . " " . "c" . $op_name . " " . join ":", @$query;
 }
 
