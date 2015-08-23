@@ -37,6 +37,7 @@ my $daemon_peer1;
 {
     my $simple_repo_dir = "test-users/peer1/clone-simple/";
     path($simple_repo_dir)->mkpath;
+    path("test-users/peer1/log")->mkpath;
 
     Git::Repository->run(init => $simple_repo_dir);
     my $master_repo = Git::Repository->new(work_tree => $simple_repo_dir);
@@ -81,6 +82,7 @@ my $daemon_peer1;
 {
     my $simple_repo_peer2 = "test-users/peer2/clone-simple/";
     path($simple_repo_peer2)->mkpath;
+    path("test-users/peer2/log")->mkpath;
 
     # Create gitp2p-config
     my $gitp2p_cfg_cnts = JSON::XS->new->pretty(1)->encode({
@@ -116,7 +118,3 @@ my $daemon_peer1;
 
 $relay->die;
 $daemon_peer1->die;
-
-
-# path($simple_repo_dir)->remove_tree;
-# TODO: Add cleanup
