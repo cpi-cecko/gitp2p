@@ -9,14 +9,13 @@
 # message = header SP op-name SP op-data
 #
 # header  = version
-# op-name = *("_" "a"."z" "A"."Z")
+# op-name = *("-" "a"."z" "A"."Z")
 # op-data = *(ALNUM ":")
 #
-# version = major "." minor "." patch ["." meta]
+# version = major "." minor "." patch
 # major   = *DIGIT
 # minor   = *DIGIT
 # patch   = *DIGIT
-# meta    = *(ALNUM / "-" / ".")
 #
 package GitP2P::Proto::Relay;
 
@@ -38,7 +37,16 @@ method parse(Str $data) {
     my ($version, $op_name, $op_data) = split / /, $data;
 
     die "Incompatible version $version"
-        if $version ne $VERSION;
+        if !defined $version || $version ne $VERSION;
+
+    die "op_name is empty [$op_name]"
+        if !defined $op_name || $op_name eq "";
+
+    die "op_name has invalid characters [$op_name]"
+        if $op_name !~ /^[a-zA-Z-]+$/;
+
+    $op_data = ""
+        if not defined $op_data;
 
     $self->version($version);
     $self->op_name($op_name);
@@ -46,6 +54,12 @@ method parse(Str $data) {
 }
 
 func build(Str $op_name is ro, ArrayRef[Str] $op_data is ro) {
+    die "op_name is empty"
+        if $op_name eq "";
+
+    die "op_name has invalid characters"
+        if $op_name !~ /^[a-zA-Z-]+$/;
+
     $VERSION . " " . $op_name . " " . join ":", @$op_data;
 }
 
