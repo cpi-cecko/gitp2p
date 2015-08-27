@@ -31,7 +31,7 @@ my $log = Log::Log4perl->get_logger("gitp2pd");
 $log->info("RUNNING");
 
 my %operations = ( "list"           => \&on_list,
-                 , "fetch_pkt_line" => \&on_fetch,
+                 , "fetch-pkt-line" => \&on_fetch,
                  , "hugz"           => \&on_hugz,
                  );
 

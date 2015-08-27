@@ -9,7 +9,7 @@
 #
 # header    = version
 # type      = d / c
-# op_name   = Str
+# op_name   = ["-" "a"."z" "A"."Z"]
 # data      = (1*(ops ":")) ; type == c
 #           / cnts          ; type == d
 #
@@ -45,8 +45,8 @@ method parse(Str \$data) {
     die "Incompatible version $version" 
         if $version ne $VERSION;
 
-    die "No op_name in message"
-        if $msg !~ /^[d|c](\w+)\s/;
+    die "No op_name in message [$msg]"
+        if $msg !~ /^[d|c]([\w\-]+)\s/;
 
     my ($type, $rest) = (substr($msg, 0, 1), substr($msg, 1));
 

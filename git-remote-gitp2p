@@ -224,7 +224,7 @@ func receive_objects(ArrayRef[Str] $peers, Str $repo, Str $owner,
         my $pS = GitP2P::Core::Finder::establish_connection($peer);
         $pSelect->add($pS);
         my $pack = GitP2P::Proto::Daemon::build_data(
-              "fetch_pkt_line", \$peer_packet->to_send);
+              "fetch-pkt-line", \$peer_packet->to_send);
         $log->info("Pack: $pack");
         $pS->send($pack); 
 
