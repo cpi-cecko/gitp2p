@@ -31,7 +31,7 @@ if (! -e "$FindBin::Bin/etc/gitp2p-log.conf") {
 }
 
 
-Log::Log4perl::init_and_watch("$FindBin::Bin/gitp2p-log.conf", 'HUP');
+Log::Log4perl::init_and_watch("$FindBin::Bin/etc/gitp2p-log.conf", 'HUP');
 my $log = Log::Log4perl->get_logger("gitp2pd");  
 
 
