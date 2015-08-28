@@ -23,9 +23,14 @@ use GitP2P::Proto::Packet;
 use GitP2P::Core::Finder;
 
 
-Log::Log4perl::init_and_watch("$FindBin::Bin/gitp2p-log.conf", 'HUP');
+if (! -e "$FindBin::Bin/etc/gitp2p-log.conf") {
+    die "Log config file not found";
+}
+
+
+Log::Log4perl::init_and_watch("$FindBin::Bin/etc/gitp2p-log.conf", 'HUP');
 my $log = Log::Log4perl->get_logger("gitp2p.relay");
-$log->info("Relay RUNNING");
+
 
 my %operations = ( "get-peers" => \&on_get_peers
                  , "add-peer"  => \&on_add_peer

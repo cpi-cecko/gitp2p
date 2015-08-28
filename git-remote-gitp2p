@@ -25,13 +25,25 @@ use GitP2P::Core::Finder;
 use GitP2P::Core::Common;
 
 
-Log::Log4perl::init("$FindBin::Bin/gitp2p-log.conf");
-my $log = Log::Log4perl->get_logger("gitp2p.helper");  
-$log->info("gitp2p helper RUNNING");
+Log::Log4perl::init(
+{
+      "log4perl.logger.gitp2p.helper" => "DEBUG, FileHelper"
+    , "log4perl.appender.FileHelper" => "Log::Log4perl::Appender::File"
+    , "log4perl.appender.FileHelper.filename" => "log/gitp2p-helper.log"
+    , "log4perl.appender.FileHelper.layout" => "Log::Log4perl::Layout::PatternLayout"
+    , "log4perl.appender.FileHelper.layout.ConversionPattern" => "[%d] %p - %m{chomp}%n"
+}
+);
+my $log = Log::Log4perl->get_logger("gitp2p.helper");
 
-my $cfg_file = "./gitp2p-config" if path("./gitp2p-config")->exists;
-my $cfg = JSON::XS->new->ascii->decode(path($cfg_file)->slurp) 
-    if $cfg_file ne "" and defined $cfg_file;
+
+# TODO: Remove the need of config file for git-remote-gitp2p
+if (! -e "$FindBin::Bin/etc/gitp2p-config") {
+    $log->logdie("gitp2p config not found");
+}
+
+my $cfg = JSON::XS->new->ascii->decode(
+    path("$FindBin::Bin/etc/gitp2p-config")->slurp);
 
 
 my ($remote, $url) = @ARGV;

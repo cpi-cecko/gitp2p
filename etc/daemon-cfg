@@ -1,0 +1,7 @@
+{
+   "port" : 47001,
+   "debug_sleep" : 0,
+   "repos" : {
+      "clone-simple" : "/media/files/PROJECTS/gitp2p/t/test-users/peer1/clone-simple//.git/"
+   }
+}

@@ -26,9 +26,14 @@ use App::Daemon qw/daemonize/;
 daemonize();
 
 
+if (! -e "$FindBin::Bin/etc/gitp2p-log.conf") {
+    die "Log config file not found";
+}
+
+
 Log::Log4perl::init_and_watch("$FindBin::Bin/gitp2p-log.conf", 'HUP');
 my $log = Log::Log4perl->get_logger("gitp2pd");  
-$log->info("RUNNING");
+
 
 my %operations = ( "list"           => \&on_list,
                  , "fetch-pkt-line" => \&on_fetch,
@@ -63,7 +68,7 @@ if ($is_add) {
     $log->info("Dir: '$dir'");
     $log->info("Last ref: '$last_ref'");
 
-    my $cfg = JSON::XS->new->ascii->decode(path("$FindBin::Bin/gitp2p-config")->slurp);
+    my $cfg = JSON::XS->new->ascii->decode(path("$FindBin::Bin/etc/gitp2p-config")->slurp);
     my $s = GitP2P::Core::Finder::connect_to_relay(\$cfg, $cfg->{port_daemon});
     my $relay_add_msg = GitP2P::Proto::Relay::build("add-peer",
         ["clone-simple", $user_id, $last_ref]);

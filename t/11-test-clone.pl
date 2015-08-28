@@ -29,7 +29,7 @@ my $daemon_peer1;
 # Start relay
 {
     $relay = Proc::Background->new("perl",
-        "$Bin/../gitp2p-relay.pl", "$Bin/../gitp2p-config");
+        "$Bin/../gitp2p-relay.pl", "$Bin/../etc/gitp2p-config");
     sleep 1; # wait for the relay to init
 }
 
@@ -38,6 +38,7 @@ my $daemon_peer1;
     my $simple_repo_dir = "test-users/peer1/clone-simple/";
     path($simple_repo_dir)->mkpath;
     path("test-users/peer1/log")->mkpath;
+    path("test-users/peer1/etc")->mkpath;
 
     Git::Repository->run(init => $simple_repo_dir);
     my $master_repo = Git::Repository->new(work_tree => $simple_repo_dir);
@@ -60,7 +61,7 @@ my $daemon_peer1;
             port_hugz => 12501,
             peers_file => "/media/files/PROJECTS/gitp2p/peers"
         });
-    path("$simple_repo_dir/../gitp2p-config")->touch->spew($gitp2p_cfg_cnts);
+    path("$simple_repo_dir/../etc/gitp2p-config")->touch->spew($gitp2p_cfg_cnts);
 
     # Create daemon cfg
     my $daemon_cfg_cnts = JSON::XS->new->pretty(1)->encode({
@@ -83,6 +84,7 @@ my $daemon_peer1;
     my $simple_repo_peer2 = "test-users/peer2/clone-simple/";
     path($simple_repo_peer2)->mkpath;
     path("test-users/peer2/log")->mkpath;
+    path("test-users/peer2/etc")->mkpath;
 
     # Create gitp2p-config
     my $gitp2p_cfg_cnts = JSON::XS->new->pretty(1)->encode({
@@ -93,7 +95,7 @@ my $daemon_peer1;
             port_hugz => 12501,
             peers_file => "/media/files/PROJECTS/gitp2p/peers"
         });
-    path("$simple_repo_peer2/../gitp2p-config")->touch->spew($gitp2p_cfg_cnts);
+    path("$simple_repo_peer2/../etc/gitp2p-config")->touch->spew($gitp2p_cfg_cnts);
 
     # Create daemon config
     my $daemon_cfg_cnts = JSON::XS->new->pretty(1)->encode({
