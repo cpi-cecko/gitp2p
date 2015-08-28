@@ -1,7 +1,7 @@
 #!/bin/bash
 
-if [ -d test-users ]; then
-    rm -r test-users
+if [ -d "11-test-clone" ]; then
+    rm -r "11-test-clone"
 fi
 
 if [ -d log ]; then
