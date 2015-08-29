@@ -8,7 +8,7 @@ use v5.020;
 BEGIN {
     require Exporter;
     our @ISA = qw/Exporter/;
-    our @EXPORT = qw/&create_simple_dir_layout &create_simple_config_layout/;
+    our @EXPORT = qw/&create_simple_dir_layout &create_simple_config_layout &init_cloned_repo/;
 }
 
 
@@ -16,6 +16,7 @@ use FindBin qw/$Bin/;
 use lib "$Bin/../lib";
 
 use Path::Tiny;
+use File::pushd;
 use JSON::XS;
 
 
@@ -58,6 +59,26 @@ sub create_simple_config_layout {
         });
     my $daemon_cfg = path("$repo_dir/../etc/daemon-cfg")->touch;
     $daemon_cfg->spew($daemon_cfg_cnts);
+}
+
+sub init_cloned_repo {
+    my %params = @_;
+
+    my $repo_dir = create_simple_dir_layout($params{test_dir},
+                                            $params{user_dir}, 
+                                            $params{repo_name});
+    create_simple_config_layout($repo_dir, $params{daemon_port}, $params{debug_sleep});
+
+    my $dir = pushd "$repo_dir/../";
+    my $clone_cmd = Git::Repository->command("clone", $params{clone_from});
+
+    my $stderr = $clone_cmd->stderr();
+    while (<$stderr>) {
+        print;
+    }
+    $clone_cmd->close;
+
+    return $repo_dir;
 }
 
 
