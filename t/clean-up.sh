@@ -1,8 +1,16 @@
 #!/bin/bash
 
-if [ -d "11-test-clone" ]; then
-    rm -r "11-test-clone"
-fi
+dirs_to_clean=("11-test-clone"
+               "12-test-clone-many-peers"
+              )
+
+for dir in ${dirs_to_clean[@]}
+do
+    if [ -d $dir ]
+    then
+        rm -r $dir
+    fi
+done
 
 if [ -d log ]; then
     [ "$(ls -A log 2> /dev/null)" != "" ] &&\

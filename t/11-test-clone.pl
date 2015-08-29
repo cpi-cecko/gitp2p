@@ -12,21 +12,22 @@ use Test::More;
 use Test::Git;
 
 use Path::Tiny;
-use JSON::XS;
 use Proc::Background;
 use File::pushd;
+
+use GitP2P::Tests qw/create_simple_dir_layout create_simple_config_layout/;
 
 
 has_git();
 
 
-plan tests => 2;
+plan tests => 1;
 
 
 my $test_dir = "11-test-clone";
 
 my $relay;
-my $daemon_peer1;
+my @daemons;
 
 # Start relay
 {
@@ -37,77 +38,33 @@ my $daemon_peer1;
 
 # Create master repo
 {
-    my $simple_repo_dir = "$test_dir/peer1/clone-simple/";
-    path($simple_repo_dir)->mkpath;
-    path("$test_dir/peer1/log")->mkpath;
-    path("$test_dir/peer1/etc")->mkpath;
+    my $repo_dir = create_simple_dir_layout($test_dir, "peer1", "clone-simple");
+    create_simple_config_layout($repo_dir, 47001, 0);
 
-    Git::Repository->run(init => $simple_repo_dir);
-    my $master_repo = Git::Repository->new(work_tree => $simple_repo_dir);
 
-    my $test = path("$simple_repo_dir/test.txt");
-    $test->spew("hello, there!");
+    # commit 1
+    Git::Repository->run(init => $repo_dir);
+    my $master_repo = Git::Repository->new(work_tree => $repo_dir);
+
+    path("$repo_dir/test.txt")->spew("hello, there!");
 
     $master_repo->run("add", "test.txt");
-    my $commit_cmd = $master_repo->command("commit", "-m", "simple commit");
-    $commit_cmd->close();
+    $master_repo->run("commit", "-m", "simple commit");
 
-    ok($commit_cmd->exit() == 0, "Initting repo");
 
-    # Create gitp2p-config
-    my $gitp2p_cfg_cnts = JSON::XS->new->pretty(1)->encode({
-            relays => { localhost => "localhost:12500" },
-            preferred_relay => "localhost",
-            port_daemon => 47001,
-            port_relay => 12500,
-            port_hugz => 12501,
-            peers_file => "/media/files/PROJECTS/gitp2p/peers"
-        });
-    path("$simple_repo_dir/../etc/gitp2p-config")->touch->spew($gitp2p_cfg_cnts);
-
-    # Create daemon cfg
-    my $daemon_cfg_cnts = JSON::XS->new->pretty(1)->encode({
-            repos => { "clone-simple" => "$Bin/$simple_repo_dir/.git/" },
-            port => 47001,
-            debug_sleep => 0
-        });
-    my $daemon_cfg = path("$simple_repo_dir/../daemon-cfg")->touch;
-    $daemon_cfg->spew($daemon_cfg_cnts);
-
-    # Spawn daemon
-    $daemon_peer1 = Proc::Background->new("perl", 
-        "$Bin/../gitp2pd.pl", "-X", "$Bin/$simple_repo_dir/../daemon-cfg", "--add");
+    push @daemons, Proc::Background->new("perl", 
+        "$Bin/../gitp2pd.pl", "-X", "$Bin/$repo_dir/../etc/daemon-cfg", "--add");
     sleep 1; # wait for the daemon to init
 }
 
 
 # Create peer2 dir and try cloning
 {
-    my $simple_repo_peer2 = "$test_dir/peer2/clone-simple/";
-    path($simple_repo_peer2)->mkpath;
-    path("$test_dir/peer2/log")->mkpath;
-    path("$test_dir/peer2/etc")->mkpath;
+    my $repo_dir = create_simple_dir_layout($test_dir, "peer2", "clone-simple");
+    create_simple_config_layout($repo_dir, 47002, 0);
 
-    # Create gitp2p-config
-    my $gitp2p_cfg_cnts = JSON::XS->new->pretty(1)->encode({
-            relays => { localhost => "localhost:12500" },
-            preferred_relay => "localhost",
-            port_daemon => 47002,
-            port_relay => 12500,
-            port_hugz => 12501,
-            peers_file => "/media/files/PROJECTS/gitp2p/peers"
-        });
-    path("$simple_repo_peer2/../etc/gitp2p-config")->touch->spew($gitp2p_cfg_cnts);
 
-    # Create daemon config
-    my $daemon_cfg_cnts = JSON::XS->new->pretty(1)->encode({
-            repos => { "clone-simple" => "$Bin/$simple_repo_peer2/.git/" },
-            port => 47002,
-            debug_sleep => 0
-        });
-    path("$simple_repo_peer2/../daemon-cfg")->touch->spew($daemon_cfg_cnts);
-
-    my $dir = pushd "$simple_repo_peer2/../";
+    my $dir = pushd "$repo_dir/../";
     my $clone_cmd = Git::Repository->command("clone", 
         'gitp2p://cpi.cecko@gmail.com/clone-simple');
 
@@ -120,5 +77,10 @@ my $daemon_peer1;
     ok($clone_cmd->exit() == 0, "Cloning repo");
 }
 
-$relay->die;
-$daemon_peer1->die;
+
+END {
+    $relay->die;
+    map { $_->die } @daemons;
+
+    $? = 0;
+}
