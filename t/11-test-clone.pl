@@ -52,6 +52,8 @@ my @daemons;
     $master_repo->run("commit", "-m", "simple commit");
 
 
+    $master_repo->run("config", "--local", "--add", "user.email", 'peer1@test.git');
+
     push @daemons, Proc::Background->new("perl", 
         "$Bin/../gitp2pd.pl", "-X", "$repo_dir/../etc", "--add");
     sleep 1; # wait for the daemon to init
@@ -75,6 +77,10 @@ my @daemons;
     $clone_cmd->close();
 
     ok($clone_cmd->exit() == 0, "Cloning repo");
+
+
+    my $repo = Git::Repository->new(work_tree => $repo_dir);
+    $repo->run("config", "--local", "--add", "user.email", 'peer2@test.git');
 }
 
 

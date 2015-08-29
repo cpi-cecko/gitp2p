@@ -58,7 +58,7 @@ if ($is_add) {
     my $dir = pushd $cfg->{repos}->{"clone-simple"} . "../";
 
     # Add daemon to relay
-    my $user_id = qx(git config --get user.email);
+    my $user_id = qx(git config --local --get user.email);
     chomp $user_id;
     # We use only the ref to which our HEAD points for testing purposes.
     # A proper implementation should query all available refs and send them to
