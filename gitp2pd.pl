@@ -40,9 +40,11 @@ my %operations = ( "list"           => \&on_list,
                  , "hugz"           => \&on_hugz,
                  );
 
+# TODO: Passing configs around ain't clever
 die "Usage: ./gitp2pd <cfg_path> [--add]"
     if scalar @ARGV == 0;
-my $cfg_file = $ARGV[0];
+my $cfg_path = $ARGV[0];
+my $cfg_file = "$cfg_path/daemon-cfg";
 my $is_add = 1 if defined $ARGV[1]; # Should we announce ourselves to the relay on startup
 
 $log->logdie("Config doesn't exist") unless path($cfg_file)->exists;
@@ -52,6 +54,7 @@ my $cfg = JSON::XS->new->ascii->decode(path($cfg_file)->slurp);
 
 if ($is_add) {
     # Hickaty hack
+    # TODO: BAD BAD BAD!
     my $dir = pushd $cfg->{repos}->{"clone-simple"} . "../";
 
     # Add daemon to relay
@@ -68,7 +71,7 @@ if ($is_add) {
     $log->info("Dir: '$dir'");
     $log->info("Last ref: '$last_ref'");
 
-    my $cfg = JSON::XS->new->ascii->decode(path("$FindBin::Bin/etc/gitp2p-config")->slurp);
+    my $cfg = JSON::XS->new->ascii->decode(path("$cfg_path/gitp2p-config")->slurp);
     my $s = GitP2P::Core::Finder::connect_to_relay(\$cfg, $cfg->{port_daemon});
     my $relay_add_msg = GitP2P::Proto::Relay::build("add-peer",
         ["clone-simple", $user_id, $last_ref]);
