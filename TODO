@@ -15,6 +15,9 @@ Current:
   3. Write RAW tests for protocol (Just flood the relay with various messages 
       and inspect the result)
 
+  4. Rework configs. Does the relay need the preferred_relays entry and the
+     relays entry?
+
 -------------------------------------------------------------------------------
 Peer-to-peer:
   1. Metainfo file
