@@ -24,7 +24,7 @@ sub create_simple_dir_layout {
     my $user_dir = shift;
     my $repo_name = shift;
 
-    my $repo_dir = "$test_dir/$user_dir/$repo_name/";
+    my $repo_dir = "$Bin/$test_dir/$user_dir/$repo_name/";
     path($repo_dir)->mkpath;
     path("$test_dir/$user_dir/log")->mkpath;
     path("$test_dir/$user_dir/etc")->mkpath;
@@ -52,7 +52,7 @@ sub create_simple_config_layout {
 
     # Create daemon cfg
     my $daemon_cfg_cnts = JSON::XS->new->pretty(1)->encode({
-            repos => { "clone-simple" => "$Bin/$repo_dir/.git/" },
+            repos => { "clone-simple" => "$repo_dir/.git/" },
             port => $daemon_port,
             debug_sleep => $debug_sleep
         });

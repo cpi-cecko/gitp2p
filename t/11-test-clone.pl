@@ -53,7 +53,7 @@ my @daemons;
 
 
     push @daemons, Proc::Background->new("perl", 
-        "$Bin/../gitp2pd.pl", "-X", "$Bin/$repo_dir/../etc/daemon-cfg", "--add");
+        "$Bin/../gitp2pd.pl", "-X", "$repo_dir/../etc/daemon-cfg", "--add");
     sleep 1; # wait for the daemon to init
 }
 
